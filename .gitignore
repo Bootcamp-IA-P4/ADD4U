@@ -13,4 +13,3 @@ __pycache__/
 *.log
 /logs
 app.log
-.gitkeep
