@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cm-red: #C8102E;
+  --cm-red-dark: #A20D25;
+  --ink: #111827;
+  --muted: #6B7280;
+  --card: #FFFFFF;
+  --soft: #F8F9FB;
+  --ok: #059669;
+  --warn: #D97706;
+  --err: #DC2626;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.cm-btn {
+  background: var(--cm-red);
+  color: #fff;
+}
+
+.cm-btn:hover {
+  background: var(--cm-red-dark);
+}
+
+.cm-outline {
+  border-color: var(--cm-red);
+  color: var(--cm-red);
+}
+
+.cm-outline:hover {
+  background: rgba(200, 16, 46, 0.06);
+}
+
+.chip {
+  border: 1px solid var(--cm-red);
+  color: var(--cm-red);
+  background: #fff;
+}
+
+.chip:hover {
+  background: rgba(200, 16, 46, 0.06);
+}
+
+.bot-bubble {
+  background: #FFF5F6;
+  border: 1px solid #FAD2D7;
+  color: #374151;
+}
+
+.user-bubble {
+  background: var(--cm-red);
+  color: #fff;
+  border: 1px solid var(--cm-red-dark);
+}
+
+.shadow-soft {
+  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(17, 24, 39, 0.2);
+  border-radius: 8px;
+}
+
+.pulse {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(.9);
+    opacity: .7
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1
+  }
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+/* Custom styles for form elements */
+.form-input {
+  @apply w-full rounded-lg bg-white border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2;
+  --tw-ring-color: var(--cm-red);
+}
+
+.form-textarea {
+  @apply w-full resize-none rounded-lg bg-white border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2;
+  --tw-ring-color: var(--cm-red);
+}
