@@ -12,5 +12,5 @@ uri = os.getenv("MONGO_URI")
 client = MongoClient(uri)
 
 def get_collection(name: str):
-    db = client["Golden"]   # tu base en Atlas
+    db = client["tester_licitacion"] 
     return db["Justificacion_necesidad"]   # la colección que quieras
