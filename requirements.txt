@@ -3,3 +3,9 @@ uvicorn
 pydantic-settings
 python-dotenv
 pymongo
+groq
+openai
+langchain
+langchain-groq
+langchain-openai
+pydantic
