@@ -53,3 +53,44 @@ Conecta la arquitectura multiagente con el **JSON canónico, validaciones, outpu
 - Consultar qué hace el **Validador** para asegurar normativa y coherencia.  
 
 ---
+
+# 📑 Guía Operativa y Técnica – Flujo Enriquecido de Mini-CELIA
+
+Este documento actúa como **guía central de referencia** para el equipo.  
+Conecta la arquitectura multiagente con el **JSON canónico, validaciones, outputs, dependencias y errores comunes**, de forma que cualquier miembro pueda consultar el flujo en detalle y entender qué hace cada bloque.
+
+---
+
+## 0. Diagrama de Flujo Enriquecido
+
+```mermaid
+%%{init: {'theme':'redux'}}%%
+flowchart TD
+    U[👤 Usuario] --> S{¿Slots completos?}
+    S -->|No| R1[Repregunta en frontend]
+    S -->|Sí| O[⚙️ Orquestador]
+
+    O --> JN[📄 Agente JN]
+    O --> PPT[📑 Agente PPT]
+    O --> CEC[💰 Agente CEC]
+    O --> CR[📋 Agente CR]
+
+    CEC --> V1{¿Presupuesto coherente?}
+    V1 -->|No| R2[Error: incoherencia presupuestaria]
+    V1 -->|Sí| V
+
+    CR --> V2{¿Criterios = 100%?}
+    V2 -->|No| R3[Repregunta usuario]
+    V2 -->|Sí| V
+
+    JN --> V
+    PPT --> V
+    V1 --> V
+    V2 --> V
+
+    V[🔒 Validador Normativo y Coherencia]
+    V --> N{¿Normativa completa?}
+    N -->|No| A[Auto-inyección de cláusulas RGPD/DNSH/Igualdad/Accesibilidad]
+    N -->|Sí| DB[(🗄️ MongoDB + 📚 Golden Repo)]
+
+    DB --> OUT[📤 Exportación final: JSON / DOCX / PDF]
