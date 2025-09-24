@@ -7,6 +7,7 @@ from typing import Dict, Any
 
 # Importar los esquemas Pydantic desde backend.models
 from backend.models.schemas_jn import (
+    ContextIn,
     JustificacionNecesidadStructured,
     ObjetoAlcance,
     ContextoProblema,
@@ -20,14 +21,19 @@ from backend.models.schemas_jn import (
 
 # Importar los prompts desde backend.prompts
 from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
-
-# Cargar variables de entorno
-load_dotenv()
+from backend.core.config import settings 
 
 # --- Configuración de los modelos de lenguaje ---
 # Asegúrate de que OPENAI_API_KEY y GROQ_API_KEY estén en tu .env
-llm_openai = ChatOpenAI(model="gpt-5", temperature=0) # Puedes cambiar el modelo si lo deseas
-llm_groq = ChatGroq(model="gpt-oss-120b", temperature=0) # Puedes cambiar el modelo si lo deseas
+
+async def generate_justificacion_necesidad(
+    user_input: ContextIn,
+    structured_llm_choice: str = "openai",
+    narrative_llm_choice: str = "openai"
+) -> JustificacionNecesidadStructured:
+    # Configuración de los modelos de lenguaje
+    llm_openai = ChatOpenAI(model="gpt-5", temperature=0, api_key=settings.openai_api_key) # Usar settings.openai_api_key
+    llm_groq = ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key) # Usar settings.groq_api_key
 
 # --- Prompt A: Generador de datos estructurados ---
 # Este prompt toma la información de entrada y la estructura según el esquema Pydantic.
