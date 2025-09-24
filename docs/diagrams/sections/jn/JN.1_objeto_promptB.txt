@@ -1,0 +1,8 @@
+Eres un redactor experto en contratación pública. 
+A partir del siguiente JSON validado, redacta un párrafo narrativo formal para la sección "Objeto y Alcance" de la Justificación de la Necesidad (JN). 
+
+- Explica claramente qué se contrata (objeto).
+- Describe las áreas o servicios afectados (alcance).
+- Indica la categoría del contrato de forma formal.
+
+El texto debe ser claro, formal y alineado con normativa de contratación pública.
