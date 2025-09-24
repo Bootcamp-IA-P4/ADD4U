@@ -44,20 +44,6 @@ Conecta la arquitectura multiagente con el **JSON canónico, validaciones, outpu
   - **CR** → coherencia administrativa.  
 - La arquitectura multiagente permite añadir más documentos (ej. contratos de obras) sin romper la estructura.  
 
----
-
-✅ Con esta guía, cualquier miembro del equipo puede:  
-- Ver qué **campos JSON** corresponden a cada agente.  
-- Entender qué **validaciones** se aplican y cómo se resuelven los errores.  
-- Identificar las **dependencias entre documentos**.  
-- Consultar qué hace el **Validador** para asegurar normativa y coherencia.  
-
----
-
-# 📑 Guía Operativa y Técnica – Flujo Enriquecido de Mini-CELIA
-
-Este documento actúa como **guía central de referencia** para el equipo.  
-Conecta la arquitectura multiagente con el **JSON canónico, validaciones, outputs, dependencias y errores comunes**, de forma que cualquier miembro pueda consultar el flujo en detalle y entender qué hace cada bloque.
 
 ---
 
@@ -94,3 +80,48 @@ flowchart TD
     N -->|Sí| DB[(🗄️ MongoDB + 📚 Golden Repo)]
 
     DB --> OUT[📤 Exportación final: JSON / DOCX / PDF]
+
+```
+---
+
+## 📖 Glosario de bloques
+
+- **Usuario 👤** → Introduce los datos iniciales (slots: objeto, presupuesto, plazos, criterios).  
+- **Slots completos ✅** → Verificación de que todos los campos obligatorios tienen valor.  
+  - ❌ Si no → el sistema repregunta.  
+- **Orquestador ⚙️** → Controla el flujo y decide qué agente interviene y en qué orden.  
+- **Agente JN 📄** → Redacta la Justificación de la Necesidad (narrativa legal).  
+- **Agente PPT 📑** → Elabora el Pliego de Prescripciones Técnicas (requisitos, metodología).  
+- **Agente CEC 💰** → Calcula el Cuadro Económico (presupuesto base, IVA, lotes).  
+- **Agente CR 📋** → Compone el Cuadro Resumen (parte administrativa).  
+- **Validación presupuesto 💰** → Revisa que `pbl_total = pbl_base + IVA`.  
+- **Validación criterios 📊** → Comprueba que la suma de criterios de adjudicación sea = 100%.  
+- **Validador normativo 🔒** → Asegura coherencia entre documentos y añade cláusulas obligatorias (RGPD, DNSH, igualdad, accesibilidad).  
+  - ❌ Si falta normativa → la inyecta automáticamente.  
+- **BBDD 🗄️ (MongoDB)** → Guarda expedientes en JSON estructurado.  
+- **Golden Repo 📚** → Repositorio de normativa y plantillas tipo que alimenta a los agentes.  
+- **Exportación 📤** → Genera la versión final en **DOCX, PDF y JSON**.  
+
+---
+
+## Guía técnica por bloques
+
+- **Usuario**: Funcionario que prepara el expediente.  
+- **Frontend React**: Interfaz donde introduce datos, puede ser wizard paso a paso o chat guiado.  
+- **Orquestador (FastAPI + LangGraph)**:  
+  - Controla el flujo del expediente.  
+  - Decide qué agente se activa y en qué orden.  
+  - Gestiona reintentos y fallos.  
+- **Agente JN**: Redacta la justificación de la necesidad.  
+- **Agente PPT**: Genera el pliego de prescripciones técnicas.  
+- **Agente CEC**: Calcula presupuesto base, IVA y lotes.  
+- **Agente CR**: Compila la información en el cuadro resumen.  
+- **Validador**:  
+  - Revisa que importes coincidan.  
+  - Verifica que plazos sean coherentes.  
+  - Garantiza que criterios de adjudicación suman 100%.  
+  - Inyecta cláusulas normativas obligatorias (RGPD, DNSH, igualdad, accesibilidad).  
+- **MongoDB + Golden Repo**:  
+  - Guarda expedientes y versiones en JSON.  
+  - Contiene normativa y expresiones tipo reutilizables.  
+- **Exportación**: Entrega final en PDF, DOCX y JSON para integraciones.  

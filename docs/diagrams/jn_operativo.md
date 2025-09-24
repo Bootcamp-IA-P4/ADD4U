@@ -73,3 +73,31 @@ flowchart TD
     N -->|Sí| DB[(🗄️ MongoDB)]
 
     DB --> OUT[📤 Documento JN en JSON / PDF / DOCX]
+
+```
+## 📖 Glosario de bloques
+
+- **Usuario 👤** → Introduce los datos de la JN (objeto, contexto, presupuesto, plazo).  
+- **Slots JN completos ✅** → Revisión de que los campos mínimos estén rellenos.  
+  - ❌ Si falta → repregunta al usuario.  
+- **Orquestador ⚙️** → Coordina el flujo hacia modelo y normativa.  
+- **Golden Repo 📚** → Repositorio normativo (LCSP, RGPD, DNSH, igualdad, accesibilidad).  
+- **Modelo 🤖** → Genera la narrativa legal de la JN en base a slots + normativa.  
+- **Validación plazo/objeto** → Revisa que `plazo > 0` y `objeto` no esté vacío.  
+- **Validación presupuesto** → Comprueba coherencia entre presupuesto y slots.  
+- **Validador JN 🔒** → Chequea normativa y coherencia antes de guardar.  
+- **Auto-inyección 🔄** → Si falta normativa, el sistema la añade automáticamente.  
+- **MongoDB 🗄️** → Guarda el documento en JSON estructurado.  
+- **Exportación 📤** → Genera los documentos finales (JSON, PDF, DOCX).  
+
+---
+
+## Guía técnica por bloques
+
+- **Slots JN**: Información estructurada capturada en frontend (objeto, presupuesto, plazos).  
+- **Orquestador**: Coordina flujo hacia modelo y normativa.  
+- **Golden Repo**: Repositorio normativo centralizado (LCSP, RGPD, DNSH, igualdad, accesibilidad).  
+- **Modelo**: LLM generador de narrativa legal (GPT-5 o Claude).  
+- **Validador**: Reglas deterministas + modelo ligero para coherencia (plazos > 0, importes coherentes, normativa presente).  
+- **MongoDB**: Guarda versión estructurada del documento y su narrativa.  
+- **Exportación**: Entrega documento en varios formatos (JSON, PDF, DOCX). 
