@@ -9,7 +9,7 @@ router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
 # Modelo de entrada para la API
 class GenerateJNRequest(BaseModel):
-    user_input: Dict[str, Any] = Field(..., description="Datos de entrada proporcionados por el usuario para generar la JN.")
+    user_input: ContextIn = Field(..., description="Datos de entrada proporcionados por el usuario para generar la JN.")
     structured_llm_choice: str = Field("openai", description="Elige el LLM para la generación de datos estructurados ('openai' o 'groq').")
     narrative_llm_choice: str = Field("groq", description="Elige el LLM para la generación de la narrativa ('openai' o 'groq').")
 

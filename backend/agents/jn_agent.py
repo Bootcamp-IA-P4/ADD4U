@@ -21,72 +21,45 @@ from backend.models.schemas_jn import (
 
 # Importar los prompts desde backend.prompts
 from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
-from backend.core.config import settings 
+from backend.core.config import settings
 
 # --- Configuración de los modelos de lenguaje ---
 # Asegúrate de que OPENAI_API_KEY y GROQ_API_KEY estén en tu .env
-
-async def generate_justificacion_necesidad(
-    user_input: ContextIn,
-    structured_llm_choice: str = "openai",
-    narrative_llm_choice: str = "openai"
-) -> JustificacionNecesidadStructured:
-    # Configuración de los modelos de lenguaje
-    llm_openai = ChatOpenAI(model="gpt-5", temperature=0, api_key=settings.openai_api_key) # Usar settings.openai_api_key
-    llm_groq = ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key) # Usar settings.groq_api_key
 
 # --- Prompt A: Generador de datos estructurados ---
 # Este prompt toma la información de entrada y la estructura según el esquema Pydantic.
 parser_structured_jn = JsonOutputParser(pydantic_object=JustificacionNecesidadStructured)
 
-# Las cadenas ahora se definirán dentro de la función para permitir la selección dinámica del LLM
-# chain_prompt_a = prompt_a_template | llm_openai | parser_structured_jn # Eliminado de aquí
-# chain_prompt_b_openai = prompt_b_template | llm_openai # Eliminado de aquí
-# chain_prompt_b_groq = prompt_b_template | llm_groq # Eliminado de aquí
-
 async def generate_justificacion_necesidad(
-    user_input: Dict[str, Any],
-    structured_llm_choice: str = "openai", # 'openai' o 'groq' para la estructuración
-    narrative_llm_choice: str = "groq" # 'openai' o 'groq' para la narrativa
-) -> Dict[str, Any]:
-    """
-    Genera la Justificación de la Necesidad en dos pasos:
-    1. Estructura los datos de entrada (Prompt A).
-    2. Genera la narrativa a partir de los datos estructurados (Prompt B).
+    user_input: ContextIn,
+    structured_llm_choice: str = "openai", # Añadimos el selector para el LLM estructurado
+    narrative_llm_choice: str = "openai"  # Añadimos el selector para el LLM narrativo
+) -> JustificacionNecesidadStructured:
+    # Configuración de los modelos de lenguaje
+    llm_openai = ChatOpenAI(model="gpt-5", api_key=settings.openai_api_key) # Usar settings.openai_api_key
+    llm_groq = ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key) # Usar settings.groq_api_key
 
-    Args:
-        user_input: Un diccionario con la información proporcionada por el usuario.
-        structured_llm_choice: Elige el LLM para la generación de datos estructurados ('openai' o 'groq').
-        narrative_llm_choice: Elige el LLM para la generación de la narrativa ('openai' o 'groq').
-
-    Returns:
-        Un diccionario con los datos estructurados y la narrativa generada.
-    """
-    # Seleccionar LLM para la estructuración
+    # Seleccionar el LLM para la generación estructurada
     if structured_llm_choice == "groq":
         structured_llm = llm_groq
-    else: # Por defecto o si no es 'groq', usa openai
+    else:
         structured_llm = llm_openai
 
-    chain_prompt_a = prompt_a_template | structured_llm | parser_structured_jn
-
-    # Paso 1: Generar datos estructurados (Prompt A)
-    structured_data = await chain_prompt_a.ainvoke(
-        {"user_input": user_input, "format_instructions": parser_structured_jn.get_format_instructions()}
-    )
-
-    # Seleccionar LLM para la narrativa
+    # Seleccionar el LLM para la generación narrativa
     if narrative_llm_choice == "groq":
         narrative_llm = llm_groq
-    else: # Por defecto o si no es 'groq', usa openai
+    else:
         narrative_llm = llm_openai
 
-    narrative_chain = prompt_b_template | narrative_llm
+    # Definir las cadenas con los LLMs seleccionados
+    structured_chain = structured_data_prompt | structured_llm.with_structured_output(JustificacionNecesidadStructured)
+    narrative_chain = narrative_prompt | narrative_llm
 
-    # Paso 2: Generar narrativa (Prompt B)
-    narrative_output = await narrative_chain.ainvoke({"structured_data": structured_data})
+    # Ejecutar las cadenas
+    structured_output = await structured_chain.ainvoke({"context": user_input.context})
+    narrative_output = await narrative_chain.ainvoke({"structured_data": structured_output.json(), "context": user_input.context})
 
-    return {
-        "structured_data": structured_data,
-        "narrative": narrative_output.content # Acceder al contenido de la respuesta del LLM
-    }
+    # Asignar la narrativa al campo correspondiente
+    structured_output.narrativa = narrative_output.content
+
+    return structured_output
