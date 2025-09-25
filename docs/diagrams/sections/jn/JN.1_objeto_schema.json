@@ -1,6 +1,4 @@
 
-
-
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "JN.1 Objeto y Alcance",
@@ -10,19 +8,17 @@
       "type": "string",
       "minLength": 10
     },
-    "alcance": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 1
+    "alcance_resumido": {
+      "type": "string"
     },
-    "categoria": {
-      "type": "string",
-      "enum": ["suministro", "servicio", "obra"]
+    "ambito": {
+      "type": "string"
     },
     "faltantes": {
       "type": "array",
       "items": { "type": "string" }
     }
   },
-  "required": ["objeto", "alcance", "categoria"]
+  "required": ["objeto", "alcance_resumido", "ambito"],
+  "additionalProperties": false
 }
