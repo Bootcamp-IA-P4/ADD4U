@@ -1,0 +1,15 @@
+{
+  "expediente_id": "EXP-001",
+  "documento": "JN",
+  "seccion": "JN.1",
+  "nodo": "B",
+  "timestamp": "2025-09-25T10:05:00Z",
+  "actor": "LLM",
+  "narrativa": "El objeto del expediente es la contratación del suministro de 200 equipos informáticos destinados a la renovación del parque de ordenadores...",
+  "refs": {
+    "hash_json_A": "hash_A_JN1",
+    "citas_golden": ["rgpd_art25_2023"],
+    "citas_normativas": []
+  },
+  "hash": "hash_B_JN1"
+}

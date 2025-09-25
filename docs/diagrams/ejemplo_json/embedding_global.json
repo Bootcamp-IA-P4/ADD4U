@@ -1,0 +1,8 @@
+{
+  "id_doc": "rgpd_art25_2023",
+  "scope": "global",
+  "expediente_id": null,
+  "chunk": "El responsable del tratamiento aplicará medidas técnicas y organizativas...",
+  "embedding": [0.123, -0.234, 0.876, ...],
+  "version": "2023-05"
+}

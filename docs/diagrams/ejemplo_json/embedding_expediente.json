@@ -1,0 +1,8 @@
+{
+  "id_doc": "EXP-001_pliego",
+  "scope": "expediente",
+  "expediente_id": "EXP-001",
+  "chunk": "La adquisición comprende 200 equipos informáticos con instalación y soporte.",
+  "embedding": [0.452, -0.133, 0.672, ...],
+  "version": "1.0"
+}

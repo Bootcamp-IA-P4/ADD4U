@@ -101,3 +101,29 @@ flowchart TD
 - **Validador**: Reglas deterministas + modelo ligero para coherencia (plazos > 0, importes coherentes, normativa presente).  
 - **MongoDB**: Guarda versión estructurada del documento y su narrativa.  
 - **Exportación**: Entrega documento en varios formatos (JSON, PDF, DOCX). 
+
+
+```mermaid
+
+
+flowchart TD
+    U["👤 Usuario: datos/slots"] --> OR["⚙️ Orquestador"]
+
+    OR --> DB1["📚 normativa_global (colección documental)"]
+    OR --> DB2["📂 expedientes (documentos particulares)"]
+    OR --> DB3["🧠 embeddings (vectorial para RAG)"]
+
+    DB1 --> OR
+    DB2 --> OR
+    DB3 --> OR
+
+    OR --> P["🧠 Prompt A/B → Modelo (JSON / narrativa)"]
+
+    P --> VL["🔒 Validador"]
+    VL --> RH["👀 Revisión humana"]
+    RH --> OUTS["🗄️ outputs/ledger (JSON_A, JSON_B)"]
+
+    OUTS --> EN["📄 Documento final (JN, PPT, CEC, CR)"]
+
+
+
