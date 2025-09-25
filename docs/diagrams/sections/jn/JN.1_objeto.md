@@ -44,3 +44,83 @@ flowchart TD
     C1 -->|Sí| C2{¿Ámbito definido?}
     C2 -->|No| R3[Repreguntar usuario]
     C2 -->|Sí| OUT[📤 JSON estructurado JN.1]
+
+```
+---
+
+## 5. Ejemplo práctico
+
+### Entrada usuario
+"Queremos contratar el suministro de equipos informáticos 
+para renovar el parque de ordenadores de la administración local. 
+El contrato incluye la adquisición, instalación y configuración inicial. 
+Se aplicará en los edificios municipales del Ayuntamiento..."
+
+### JSON_A (estructurado)
+```json
+{
+  "schema_version": "1.0.0",
+  "doc": "JN",
+  "seccion": "JN.1",
+  "expediente_id": "EXP-AYTO-2025-001",
+  "nodo": "A",
+  "timestamp": "2025-09-25T09:30:00Z",
+  "actor": "G",
+  "proveniencia": "A(JSON) desde UI",
+  "data": {
+    "objeto": "Contratación del suministro de equipos informáticos para la renovación del parque de ordenadores de la administración local.",
+    "alcance_resumido": "Incluye adquisición, instalación y configuración inicial de los equipos.",
+    "ambito": "Edificios municipales del Ayuntamiento"
+  },
+  "citas_golden": [],
+  "citas_normativas": [],
+  "faltantes": [],
+  "alertas": [],
+  "dependencias": [],
+  "score_local": { "estructura": 1, "cumplimiento": 1, "narrativa": 0 }
+}
+```
+
+### JSON_B (estructurado)
+
+```json
+
+{
+  "schema_version": "1.0.0",
+  "doc": "JN",
+  "seccion": "JN.1",
+  "expediente_id": "EXP-AYTO-2025-001",
+  "nodo": "B",
+  "timestamp": "2025-09-25T09:31:00Z",
+  "actor": "G",
+  "proveniencia": "B(narrativa) a partir de JSON A validado",
+  "refs": {
+    "hash_json_A": "hash_A_JN1",
+    "citas_golden": [],
+    "citas_normativas": []
+  },
+  "render_options": {
+    "modo": "con_titulos",
+    "estilo_listas": "parrafos",
+    "tono": "administrativo neutro",
+    "max_chars": 900
+  },
+  "narrativa": {
+    "outline": ["Objeto y Alcance"],
+    "texto": "El objeto del expediente es la contratación del suministro de equipos informáticos con el fin de renovar el parque de ordenadores de la administración local. El alcance del contrato comprende la adquisición, instalación y configuración inicial de los equipos. El ámbito de aplicación son los edificios municipales del Ayuntamiento.",
+    "placeholders": []
+  },
+  "calidad": {
+    "score_local": { "narrativa": 1.0 },
+    "warnings": []
+  },
+  "control_llm": {
+    "model": "GPT-5",
+    "temperature": 0.2,
+    "tokens_prompt": 0,
+    "tokens_completion": 0,
+    "stop_reason": "stop"
+  }
+}
+
+

@@ -8,3 +8,20 @@ Tu tarea es estructurar los datos del Objeto y Alcance de la licitación en un J
 
 No inventes datos. Si falta algo, márcalo en faltantes[].
 Devuelve SOLO JSON válido.
+
+---
+
+# Ejemplo de uso (documentación interna, no enviado al LLM)
+# Entrada de usuario:
+# "Queremos contratar el suministro de equipos informáticos 
+#  para renovar el parque de ordenadores de la administración local. 
+#  El contrato incluye la adquisición, instalación y configuración inicial. 
+#  Se aplicará en los edificios municipales del Ayuntamiento."
+#
+# Salida esperada:
+# {
+#   "objeto": "Contratación del suministro de equipos informáticos para la renovación del parque de ordenadores de la administración local.",
+#   "alcance_resumido": "Incluye adquisición, instalación y configuración inicial de los equipos.",
+#   "ambito": "Edificios municipales del Ayuntamiento",
+#   "faltantes": []
+# }
