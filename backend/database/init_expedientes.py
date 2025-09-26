@@ -1,4 +1,4 @@
-from database.mongo import get_collection
+from backend.database.mongo import get_collection
 
 def create_indexes():
     collection = get_collection("expedientes")
