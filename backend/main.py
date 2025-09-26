@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from backend.api.routes_jn import router as jn_router
+from backend.api.jn_routes import router as jn_router
 from backend.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
