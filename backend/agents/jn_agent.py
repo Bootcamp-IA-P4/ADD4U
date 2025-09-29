@@ -2,9 +2,10 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
+from langchain_core.output_parsers import JsonOutputParser
 from typing import Dict, Any
 
-# Importar esquemas de entrada
+# Importar esquemas
 from backend.models.schemas_jn import UserInputJN
 # Importar prompts
 from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
@@ -30,14 +31,19 @@ async def generate_justificacion_necesidad(
     llm_openai = ChatOpenAI(model="gpt-5", api_key=settings.openai_api_key)
     llm_groq = ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key)
 
-    # Selección de LLM para parte estructurada
+    # Selección de LLMs
     structured_llm = llm_groq if structured_llm_choice == "groq" else llm_openai
-    # Selección de LLM para parte narrativa
     narrative_llm = llm_groq if narrative_llm_choice == "groq" else llm_openai
+
+    # Parser para estructurado
+    parser = JsonOutputParser(pydantic_object=dict)
 
     # --- Paso 1: Prompt A → datos estructurados ---
     structured_chain = prompt_a_template | structured_llm
-    structured_output = await structured_chain.ainvoke({"user_input": user_input.user_text})
+    structured_output = await structured_chain.ainvoke({
+        "user_input": user_input.user_text,
+        "format_instructions": parser.get_format_instructions()
+    })
 
     # Validar/normalizar con lógica interna → JSON_A
     json_a = await build_jn_output({
