@@ -28,11 +28,11 @@ def get_llm(provider: str):
         if settings.openai_api_key:
             return ChatOpenAI(model="gpt-5", api_key=settings.openai_api_key)
         elif settings.groq_api_key:  # fallback
-            return ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key)
+            return ChatGroq(model="llama-3.1-8b-instant", temperature=0, api_key=settings.groq_api_key)
 
     if provider == "groq":
         if settings.groq_api_key:
-            return ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key)
+            return ChatGroq(model="llama-3.1-8b-instant", temperature=0, api_key=settings.groq_api_key)
         elif settings.openai_api_key:  # fallback
             return ChatOpenAI(model="gpt-5", api_key=settings.openai_api_key)
 
@@ -65,7 +65,10 @@ async def generate_justificacion_necesidad(
         "format_instructions": parser.get_format_instructions()
     })
 
-    # Si el modelo devuelve string JSON → parsear
+    # Normalizar salida (AIMessage → str → dict)
+    if hasattr(structured_output, "content"):
+        structured_output = structured_output.content
+
     if isinstance(structured_output, str):
         try:
             structured_output = json.loads(structured_output)
@@ -83,13 +86,16 @@ async def generate_justificacion_necesidad(
     narrative_chain = prompt_b_template | narrative_llm
     narrative_output = await narrative_chain.ainvoke({"structured_data": json_a})
 
+    # Normalizar narrativa
+    narrativa_texto = narrative_output.content if hasattr(narrative_output, "content") else str(narrative_output)
+
     # JSON_B básico
     json_b = {
         "doc": "JN",
         "seccion": user_input.seccion,
         "expediente_id": user_input.expediente_id,
         "nodo": "B",
-        "narrativa": narrative_output.content
+        "narrativa": narrativa_texto
     }
 
     # Devolver ambos resultados
