@@ -1,8 +1,19 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
+from typing import Dict, Any
 
-# Modelo simplificado para la entrada de usuario
-# Sirve solo para validar lo mínimo necesario desde el frontend
 class UserInputJN(BaseModel):
-    expediente_id: str      # Identificador del expediente
-    seccion: str            # Ejemplo: "JN.1", "JN.2", etc.
-    user_text: str          # Texto libre proporcionado por el usuario
+    """
+    Modelo de entrada del usuario.
+    Se valida lo mínimo: expediente, sección y texto libre.
+    """
+    expediente_id: str
+    seccion: str
+    user_text: str
+
+
+class StructuredJNOutput(RootModel[Dict[str, Any]]):
+    """
+    Modelo genérico para capturar el JSON estructurado
+    devuelto por el Prompt A.
+    """
+    pass
