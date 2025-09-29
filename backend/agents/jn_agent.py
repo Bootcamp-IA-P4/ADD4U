@@ -4,6 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
 from typing import Dict, Any
+import json # Importar el módulo json
 
 # Importar los esquemas Pydantic desde backend.models
 from backend.models.schemas_jn import (
@@ -37,7 +38,7 @@ async def generate_justificacion_necesidad(
 ) -> JustificacionNecesidadStructured:
     # Configuración de los modelos de lenguaje
     llm_openai = ChatOpenAI(model="gpt-5", api_key=settings.openai_api_key) # Usar settings.openai_api_key
-    llm_groq = ChatGroq(model="gpt-oss-120b", temperature=0, api_key=settings.groq_api_key) # Usar settings.groq_api_key
+    llm_groq = ChatGroq(model="openai/gpt-oss-20b", temperature=0, api_key=settings.groq_api_key) # Usar settings.groq_api_key
 
     # Seleccionar el LLM para la generación estructurada
     if structured_llm_choice == "groq":
@@ -52,14 +53,21 @@ async def generate_justificacion_necesidad(
         narrative_llm = llm_openai
 
     # Definir las cadenas con los LLMs seleccionados
-    structured_chain = structured_data_prompt | structured_llm.with_structured_output(JustificacionNecesidadStructured)
-    narrative_chain = narrative_prompt | narrative_llm
+    #structured_chain = prompt_a_template | structured_llm.with_structured_output(JustificacionNecesidadStructured)
+    structured_chain = prompt_a_template | structured_llm | parser_structured_jn
+    narrative_chain = prompt_b_template | narrative_llm
 
     # Ejecutar las cadenas
-    structured_output = await structured_chain.ainvoke({"context": user_input.context})
-    narrative_output = await narrative_chain.ainvoke({"structured_data": structured_output.json(), "context": user_input.context})
+    #structured_output = await structured_chain.ainvoke({"context": user_input.context})
+    #narrative_output = await narrative_chain.ainvoke({"structured_data": structured_output.json(), "context": user_input.context})
+    
+    structured_output = await structured_chain.ainvoke({"user_input": user_input.prompt, "format_instructions": parser_structured_jn.get_format_instructions()})
+    narrative_output = await narrative_chain.ainvoke({"structured_data": json.dumps(structured_output), "user_input": user_input.prompt})
 
     # Asignar la narrativa al campo correspondiente
-    structured_output.narrativa = narrative_output.content
+    #structured_output.narrativa = narrative_output.content
+    #return structured_output
+    final_output = JustificacionNecesidadStructured(**structured_output)
+    final_output.narrativa = narrative_output.content
 
-    return structured_output
+    return final_output
