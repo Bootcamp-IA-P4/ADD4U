@@ -1,39 +1,28 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict
-from backend.models.schemas_jn import ContextIn
+from backend.models.schemas_jn import UserInputJN
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
-# Modelo de entrada para la API
-class GenerateJNRequest(BaseModel):
-    user_input: ContextIn = Field(..., description="Datos de entrada proporcionados por el usuario para generar la JN.")
-    structured_llm_choice: str = Field("openai", description="Elige el LLM para la generación de datos estructurados ('openai' o 'groq').")
-    narrative_llm_choice: str = Field("groq", description="Elige el LLM para la generación de la narrativa ('openai' o 'groq').")
-
+# Endpoint simple para probar JSON_A directamente
 @router.post("/de_la_necesidad")
-async def justificacion_de_la_necesidad(ctx: ContextIn):
+async def justificacion_de_la_necesidad(ctx: UserInputJN):
+    """
+    Genera solo el JSON_A (estructura validada) a partir de los datos del usuario.
+    """
     return await build_jn_output(ctx.dict())
 
+# Endpoint completo: JSON_A + JSON_B
 @router.post("/generar_jn")
-async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
+async def generar_justificacion_de_la_necesidad(request: UserInputJN):
     """
-    Genera la Justificación de la Necesidad (JN) en formato estructurado y narrativo.
-    Permite seleccionar el LLM a utilizar para cada etapa.
+    Genera la Justificación de la Necesidad en dos fases:
+    - JSON_A (estructurado, validado)
+    - JSON_B (narrativa final)
     """
-    if request.structured_llm_choice not in ["openai", "groq"]:
-        raise HTTPException(status_code=400, detail="structured_llm_choice debe ser 'openai' o 'groq'")
-    if request.narrative_llm_choice not in ["openai", "groq"]:
-        raise HTTPException(status_code=400, detail="narrative_llm_choice debe ser 'openai' o 'groq'")
-
     try:
-        jn_output = await generate_justificacion_necesidad(
-            user_input=request.user_input,
-            structured_llm_choice=request.structured_llm_choice,
-            narrative_llm_choice=request.narrative_llm_choice
-        )
-        return jn_output
+        result = await generate_justificacion_necesidad(request)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
