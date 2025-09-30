@@ -1,42 +1,36 @@
-from pydantic import BaseModel
-from typing import Any, Optional
+from pydantic import BaseModel, RootModel, Field
+from typing import Dict, Any, Optional, List
 
-class ContextIn(BaseModel):
-    #expediente_id: str
-    #seccion: str
-    #slots_confirmados_json: Optional[Any] = None
-    #ideas_aceptadas_json: Optional[Any] = None
-    #bloques_golden_json: Optional[Any] = None
-    #citas_normativas_json: Optional[Any] = None
-    #locale_meta_json: Optional[Any] = None
-    #data_schema_json: Optional[Any] = None
-    #hash_prev: Optional[str] = None
-    prompt: str
-
-class JustificacionNecesidadStructured(BaseModel):
-    justificacion: str
-    narrativa: str
+class UserRequest(BaseModel):
+    expediente_id: str
+    seccion: str
+    user_text: str
 
 class ObjetoAlcance(BaseModel):
-    nombre: str
+    objeto: str = Field(description="Descripción del objeto o servicio a contratar.")
+    alcance: str = Field(description="Alcance del objeto o servicio, incluyendo cantidades, plazos, etc.")
 
 class ContextoProblema(BaseModel):
-    descripcion: str
+    problema_actual: str = Field(description="Descripción del problema o necesidad actual que se busca resolver.")
+    impacto_problema: str = Field(description="Impacto del problema en la organización o en los usuarios.")
 
 class Objetivos(BaseModel):
-    descripcion: str
+    objetivo_general: str = Field(description="Objetivo general que se busca lograr con la contratación.")
+    objetivos_especificos: List[str] = Field(description="Lista de objetivos específicos que contribuyen al objetivo general.")
 
 class AlternativasConsideradas(BaseModel):
-    descripcion: str
+    alternativas: List[str] = Field(description="Descripción de las alternativas consideradas para resolver el problema.")
+    justificacion_seleccion: str = Field(description="Justificación de por qué la alternativa seleccionada es la más adecuada.")
 
-class TipoContratoProcedimiento(BaseModel):
-    descripcion: str
+class JustificacionNecesidadStructured(BaseModel):
+    objeto_alcance: ObjetoAlcance
+    contexto_problema: ContextoProblema
+    objetivos: Objetivos
+    alternativas_consideradas: AlternativasConsideradas
+    narrativa: Optional[str] = Field(None, description="Narrativa generada de la justificación de necesidad.")
 
-class PresupuestoFinanciacion(BaseModel):
-    descripcion: str
-
-class PlazoHitos(BaseModel):
-    descripcion: str
-
-class RiesgosMitigacion(BaseModel):
-    descripcion: str
+class ChatResponse(RootModel[Dict[str, Any]]):
+    """
+    Respuesta en JSON del modelo con la Justificación de Necesidad.
+    """
+    pass
