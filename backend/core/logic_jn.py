@@ -26,7 +26,7 @@ async def build_jn_output(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "timestamp": iso8601_utc_now(),
         "actor": "G",
         "proveniencia": "A(JSON) desde UI+Golden",
-        "hash_prev": ctx.get["hash_prev", ""],
+        "hash_prev": ctx.get("hash_prev", ""),
         "hash": "",
         "data": {},
         "citas_golden": [],
@@ -37,9 +37,9 @@ async def build_jn_output(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "score_local": {"estructura": 0, "cumplimiento": 0, "narrativa": 0},
     }
 
-    if ctx.bloques_golden_json:
+    if ctx.get("bloques_golden_json"):
         try:
-            for b in ctx.bloques_golden_json:
+            for b in ctx.get("bloques_golden_json"):
                 if isinstance(b, dict) and {"id", "version"}.issubset(b.keys()):
                     output["citas_golden"].append({
                         "id": b.get("id"),
@@ -49,13 +49,13 @@ async def build_jn_output(ctx: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             pass
 
-    if ctx.citas_normativas_json:
+    if ctx.get("citas_normativas_json"):
         try:
-            output["citas_normativas"] = list(ctx.citas_normativas_json)
+            output["citas_normativas"] = list(ctx.get("citas_normativas_json"))
         except Exception:
             pass
 
-    data_in = ctx.data_schema_json
+    data_in = ctx.get("data_schema_json")
     if not data_in:
         output["faltantes"].append({"id": "data", "tipo": "object", "por_que": "data_schema_json no proporcionado", "nodo_origen": "A"})
         output["data"] = {}
