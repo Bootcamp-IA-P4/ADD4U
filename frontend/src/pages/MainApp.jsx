@@ -1,36 +1,38 @@
 import React from 'react'
-import { useAuth } from '../contexts/AuthContext'
 import { useAppState } from '../contexts/AppStateContext'
 import Header from '../components/Header'
-import ContextSection from '../components/ContextSection'
-import QuickActions from '../components/QuickActions'
 import ChatSection from '../components/ChatSection'
-import AdminPanel from '../components/AdminPanel'
 import DraftModal from '../components/DraftModal'
 import Toast from '../components/Toast'
 
 const MainApp = () => {
-  const { isAdmin } = useAuth()
   const { showDraftModal } = useAppState()
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-ink">
-      {/* Franja institucional */}
-      <div className="w-full h-1.5" style={{background: 'var(--cm-red)'}}></div>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-5">
-        <Header />
-
-        {/* Top grid: Contexto + Sugerencias + Indicadores */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
-          <ContextSection />
-          <QuickActions />
+    <div className="min-h-screen text-ink" style={{background: 'var(--gradient-bg)'}}>
+      {/* Franja institucional con gradiente */}
+      <div 
+        className="w-full h-2" 
+        style={{background: 'linear-gradient(90deg, var(--cm-red) 0%, var(--cm-red-dark) 100%)'}}
+      ></div>      {/* Header con efecto glass centrado */}
+      <div className="header-glass sticky top-0 z-10">
+        <div className="px-4 md:px-6 lg:px-8 py-5">
+          <Header />
         </div>
+      </div>      {/* Contenido principal centrado */}
+      <div className="flex items-center justify-center min-h-[calc(100vh-140px)] px-4 py-6">
+        <div className="w-full max-w-5xl">
+          {/* Descripción sutil */}
+          <div className="text-center mb-6">
+            <p className="text-lg text-muted max-w-3xl mx-auto font-medium">
+              Generación automática e inteligente de documentos de licitación con validación normativa
+            </p>
+          </div>
 
-        {/* Main grid: Chat + Orquestador */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <ChatSection />
-          {isAdmin && <AdminPanel />}
+          {/* Chat principal */}
+          <div className="chat-container rounded-3xl p-6 md:p-8 float-animation">
+            <ChatSection />
+          </div>
         </div>
       </div>
 

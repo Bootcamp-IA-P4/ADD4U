@@ -1,33 +1,19 @@
 import React, { useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
 
 const ExportMenu = () => {
   const [showMenu, setShowMenu] = useState(false)
-  const { isAdmin } = useAuth()
 
   const handleExport = (type) => {
     setShowMenu(false)
     
     switch (type) {
       case 'md':
-        if (!isAdmin) {
-          showToast('Solo Admin puede exportar expediente')
-          return
-        }
         downloadMarkdown()
         break
       case 'doc':
-        if (!isAdmin) {
-          showToast('Solo Admin puede exportar expediente')
-          return
-        }
         downloadDoc()
         break
       case 'json':
-        if (!isAdmin) {
-          showToast('Solo Admin puede exportar manifiesto')
-          return
-        }
         downloadManifest()
         break
       case 'chat':
@@ -158,22 +144,21 @@ const ExportMenu = () => {
       </button>
       
       {showMenu && (
-        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg p-2 border border-gray-200 shadow-soft z-20">
-          <button 
+        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg p-2 border border-gray-200 shadow-soft z-20">          <button 
             onClick={() => handleExport('md')}
-            className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm"
           >
             Bajar expediente (.md)
           </button>
           <button 
             onClick={() => handleExport('doc')}
-            className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm"
           >
             Bajar expediente (.doc)
           </button>
           <button 
             onClick={() => handleExport('json')}
-            className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm"
           >
             Bajar manifiesto (.json)
           </button>

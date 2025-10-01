@@ -1,242 +1,393 @@
 import axios from 'axios'
 
-const API_BASE_URL = '/api'
+// Configuración del backend FastAPI
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 class ApiService {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: 30000, // Aumentado para llamadas a OpenAI
       headers: {
         'Content-Type': 'application/json',
       },
     })
 
-    // Request interceptor para agregar token
+    // Interceptor para requests
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('auth_token')
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
+        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`)
         return config
       },
-      (error) => {
-        return Promise.reject(error)
-      }
+      (error) => Promise.reject(error)
     )
 
-    // Response interceptor para manejar errores
+    // Interceptor para responses
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        console.log(`✅ API Response: ${response.status} ${response.config.url}`)
+        return response
+      },
       (error) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('user_data')
-          window.location.href = '/login'
+        console.error('❌ API Error:', error.response?.data || error.message)
+        
+        // Si el backend no está disponible, mostrar error específico
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+          console.error('🔌 Backend not available. Make sure FastAPI is running on port 8000')
         }
+        
         return Promise.reject(error)
       }
     )
   }
-
-  // Métodos para secciones
-  async generateSection(sectionId, context) {
+  // Método principal: Generación de Justificación de la Necesidad
+  async generateJN(context) {
     try {
-      const response = await this.client.post('/generate', {
-        section: sectionId,
-        context
+      console.log('📋 Generating JN with context:', context)
+      const response = await this.client.post('/justificacion/de_la_necesidad', {
+        proceso: context.proceso || '',
+        entidad: context.entidad || '',
+        fecha_limite: context.fecha || '',
+        presupuesto: context.presupuesto || '',
+        descripcion: context.descripcion || ''
       })
-      return response.data
+      return {
+        success: true,
+        content: response.data.justificacion || response.data,
+        citations: response.data.fuentes || []
+      }
     } catch (error) {
-      console.error('Error generating section:', error)
-      // Fallback a generación mock si el backend no está disponible
-      return this.mockGenerateSection(sectionId, context)
+      console.error('❌ Error generating JN:', error)
+      return {
+        success: false,
+        error: error.response?.data?.detail || error.message,
+        content: this.getMockJN(context)
+      }
     }
   }
 
-  async validateSection(sectionId, content) {
+  // Chat inteligente con OpenAI
+  async chatWithBot(message, context = {}) {
     try {
-      const response = await this.client.post('/validate', {
-        section: sectionId,
-        content
-      })
-      return response.data
-    } catch (error) {
-      console.error('Error validating section:', error)
-      return this.mockValidateSection(sectionId, content)
-    }
-  }
-
-  async runCompliance(content) {
-    try {
-      const response = await this.client.post('/compliance', { content })
-      return response.data
-    } catch (error) {
-      console.error('Error checking compliance:', error)
-      return this.mockRunCompliance(content)
-    }
-  }
-
-  async runCoherence(sections) {
-    try {
-      const response = await this.client.post('/coherence', { sections })
-      return response.data
-    } catch (error) {
-      console.error('Error checking coherence:', error)
-      return this.mockRunCoherence(sections)
-    }
-  }
-
-  // Mock implementations para cuando el backend no esté disponible
-  mockGenerateSection(sectionId, context) {
-    const now = new Date().toLocaleString()
-    const templates = {
-      JN: `# Justificación de la Necesidad (JN)
-Fecha: ${now}
-Proceso: ${context.proceso || '—'}
-Entidad: ${context.entidad || '—'}
-
-1. Necesidad y procedimiento
-La contratación se justifica por la existencia de una necesidad cierta y actual, conforme a la normativa aplicable [Fuente: Golden Repo · Contratación Pública].
-
-2. Objeto y fines
-Se requiere ${context.proceso || 'el servicio/obra/suministro'} para asegurar continuidad y calidad del servicio público.
-
-3. Eficiencia y eficacia
-La solución seleccionada maximiza la eficiencia, evitando fraccionamientos indebidos y garantizando concurrencia [Norma de referencia].
-
-4. Procedimiento propuesto
-Se propone procedimiento abierto con publicidad suficiente, criterios de adjudicación equilibrados y ponderación total de 100%.`,
+      console.log('💬 Sending message to bot:', message)
       
-      PPT: `# Pliego Técnico (PPT)
-Fecha: ${now}
-
-Alcance
-• Actividades principales vinculadas a ${context.proceso || 'el objeto'}.
-• Entregables y criterios de aceptación.
-
-Criterios Técnicos
-• Metodología de ejecución.
-• Medios y solvencias técnicas.
-
-Obligaciones
-• RGPD y seguridad de la información.
-• DNSH/PRTR cuando proceda.
-
-Hitos y Plazos
-• Definición de hitos y plazos coherentes con la fecha límite ${context.fecha ? '(' + context.fecha + ')' : ''}.`,
-
-      CEC: `# Presupuesto (CEC)
-Fecha: ${now}
-
-Estructura de costes
-• Directos, Indirectos, Impuestos.
-
-Cuantificación del PPT
-• Los costes se derivan del alcance definido en el PPT.
-
-Ponderación Económica
-• Pesos económicos total = 100%.`,
-
-      CR: `# Cuadro Resumen (CR)
-Fecha: ${now}
-
-Criterios de adjudicación
-• Técnicos: 60%
-• Económicos: 40%
-Total: 100%
-
-Plazos y solvencias
-• Plazos alineados con PPT y JN.
-• Solvencias técnicas y económicas según normativa.`
-    }
-
-    const citations = {
-      JN: ['CP_General_2024', 'Concurrencia_Art.xxx'],
-      PPT: ['PPT_Modelo_v1', 'RGPD_Guia'],
-      CEC: ['CEC_Estructura', 'Fiscalidad_IVA'],
-      CR: ['CR_Ponderaciones', 'Solvencias_Reglamento']
-    }
-
-    return {
-      content: templates[sectionId] || 'Contenido generado automáticamente.',
-      citations: citations[sectionId] || []
+      // Detectar tipo de solicitud
+      const requestType = this.detectRequestType(message)
+      
+      if (requestType === 'jn') {
+        return await this.generateJN(context)
+      }
+      
+      // Para otros tipos de consultas, usar endpoint de chat general
+      const response = await this.client.post('/chat', {
+        message,
+        context,
+        type: requestType
+      })
+      
+      return {
+        success: true,
+        content: response.data.response || response.data.message,
+        type: requestType
+      }
+    } catch (error) {
+      console.error('❌ Error in chat:', error)
+      return {
+        success: false,
+        error: error.response?.data?.detail || error.message,
+        content: this.getMockResponse(message, context)
+      }
     }
   }
 
-  mockValidateSection(sectionId, content) {
-    const errors = []
+  // Detectar tipo de solicitud del usuario
+  detectRequestType(message) {
+    const lowerMsg = message.toLowerCase()
     
-    if (!content?.trim()) {
-      errors.push('No hay contenido generado.')
-    }
+    if (lowerMsg.includes('jn') || lowerMsg.includes('justificación')) return 'jn'
+    if (lowerMsg.includes('ppt') || lowerMsg.includes('pliego')) return 'ppt'
+    if (lowerMsg.includes('cec') || lowerMsg.includes('presupuesto')) return 'cec'
+    if (lowerMsg.includes('cr') || lowerMsg.includes('cuadro resumen')) return 'cr'
+    if (lowerMsg.includes('expediente completo')) return 'complete'
+    if (lowerMsg.includes('cumplimiento') || lowerMsg.includes('validar')) return 'validate'
     
-    if (sectionId === 'CR' && !/Total:\s*100%/i.test(content)) {
-      errors.push('Los pesos deben sumar 100% (incluye "Total: 100%").')
-    }
-    
-    if (sectionId === 'CEC' && !/100%/i.test(content)) {
-      errors.push('Incluye referencia a pesos = 100% en CEC.')
-    }
-    
-    if (sectionId === 'PPT' && !/RGPD/i.test(content)) {
-      errors.push('Incluye mención a RGPD en obligaciones.')
-    }
-    
-    if (sectionId === 'JN' && !/necesidad/i.test(content)) {
-      errors.push('Incluye el fundamento de la necesidad.')
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors
+    return 'general'
+  }
+  // Validación de cumplimiento normativo
+  async validateCompliance(content) {
+    try {
+      console.log('✅ Validating compliance for content')
+      const response = await this.client.post('/validate/compliance', { 
+        content,
+        checks: ['DNSH', 'RGPD', 'fraccionamiento']
+      })
+      return {
+        success: true,
+        results: response.data.validation_results || response.data
+      }
+    } catch (error) {
+      console.error('❌ Error validating compliance:', error)
+      return {
+        success: false,
+        error: error.message,
+        results: this.getMockCompliance()
+      }
     }
   }
 
-  mockRunCompliance(content) {
-    const jn = content.JN || ''
-    const ppt = content.PPT || ''
-    
-    const compliance = {
-      DNSH: /DNSH/i.test(ppt),
-      PRTR: /PRTR/i.test(ppt),
-      RGPD: /RGPD/i.test(ppt),
-      Fracc: /fraccionam/i.test(jn)
-    }
-    
-    const missing = []
-    if (!compliance.DNSH) missing.push('DNSH')
-    if (!compliance.PRTR) missing.push('PRTR')
-    if (!compliance.RGPD) missing.push('RGPD')
-    if (!compliance.Fracc) missing.push('No fraccionamiento')
-    
-    return {
-      ...compliance,
-      Missing: missing
+  // Validación de coherencia entre documentos
+  async validateCoherence(sections) {
+    try {
+      console.log('🔗 Validating coherence between sections')
+      const response = await this.client.post('/validate/coherence', { sections })
+      return {
+        success: true,
+        results: response.data.coherence_results || response.data
+      }
+    } catch (error) {
+      console.error('❌ Error validating coherence:', error)
+      return {
+        success: false,
+        error: error.message,
+        results: this.getMockCoherence()
+      }
     }
   }
 
-  mockRunCoherence(sections) {
-    const cr = sections.CR || ''
-    const ppt = sections.PPT || ''
-    const cec = sections.CEC || ''
-    const notes = []
+  // Generar expediente completo
+  async generateComplete(context) {
+    try {
+      console.log('🚀 Generating complete expedition')
+      const response = await this.client.post('/generate/complete', context)
+      return {
+        success: true,
+        sections: response.data.sections || response.data
+      }
+    } catch (error) {
+      console.error('❌ Error generating complete expedition:', error)
+      return {
+        success: false,
+        error: error.message,
+        sections: this.getMockComplete(context)
+      }
+    }
+  }
 
-    if (!/Total:\s*100%/i.test(cr)) {
-      notes.push('CR: los pesos no suman 100%.')
+  // Health check del backend
+  async healthCheck() {
+    try {
+      const response = await this.client.get('/health')
+      return {
+        success: true,
+        status: response.data.status || 'OK',
+        backend: true
+      }
+    } catch (error) {
+      return {
+        success: false,
+        status: 'Backend not available',
+        backend: false,
+        error: error.message
+      }
     }
-    
-    if (!/100%/i.test(cec)) {
-      notes.push('CEC: añade referencia a pesos = 100%.')
+  }
+  // ============ MÉTODOS MOCK PARA FALLBACK ============
+  getMockJN(context) {
+    const now = new Date().toLocaleString('es-ES')
+    return `<div class="generated-content">
+<h3 style="color: var(--cm-red); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+  </svg>
+  Justificación de la Necesidad (JN)
+</h3>
+<p><strong>Generado:</strong> ${now}</p>
+<p><strong>Proceso:</strong> ${context.proceso || 'No especificado'}</p>
+<p><strong>Entidad:</strong> ${context.entidad || 'No especificada'}</p>
+
+<h4>1. Necesidad identificada</h4>
+<p>Se ha identificado la necesidad de contratar <em>${context.proceso || 'servicios especializados'}</em> para garantizar la continuidad del servicio público y el cumplimiento de los objetivos institucionales.</p>
+
+<h4>2. Justificación normativa</h4>
+<p>La contratación se ajusta a lo dispuesto en la Ley de Contratos del Sector Público, garantizando los principios de transparencia, concurrencia e igualdad de trato.</p>
+
+<h4>3. Procedimiento propuesto</h4>
+<p>Se propone procedimiento abierto con criterios de adjudicación equilibrados que permitan seleccionar la oferta más ventajosa.</p>
+
+<p><small style="display: flex; align-items: center; gap: 4px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+  <strong>Modo offline:</strong> Contenido generado localmente. Conecta con el backend para obtener respuestas inteligentes de OpenAI.
+</small></p>
+</div>`
+  }
+
+  getMockResponse(message, context) {
+    const responses = {      jn: `<div class="ai-response">
+<h4 style="display: flex; align-items: center; gap: 8px;">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+  </svg>
+  Sobre Justificación de la Necesidad
+</h4>
+<p>La JN debe incluir:</p>
+<ul>
+<li>Identificación clara de la necesidad</li>
+<li>Justificación del procedimiento seleccionado</li>
+<li>Criterios de adjudicación propuestos</li>
+<li>Presupuesto estimativo</li>
+</ul>
+<p><em style="display: flex; align-items: center; gap: 4px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 6l0 6l4 4"/>
+  </svg>
+  Usa la acción rápida "Generar JN" para crear el documento completo.
+</em></p>
+</div>`,      ppt: `<div class="ai-response">
+<h4 style="display: flex; align-items: center; gap: 8px;">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+  </svg>
+  Sobre Pliego de Prescripciones Técnicas
+</h4>
+<p>El PPT debe definir:</p>
+<ul>
+<li>Objeto y alcance del contrato</li>
+<li>Especificaciones técnicas</li>
+<li>Criterios de solvencia</li>
+<li>Obligaciones del contratista</li>
+</ul>
+</div>`,      complete: `<div class="ai-response">
+<h4 style="display: flex; align-items: center; gap: 8px;">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+  Expediente Completo
+</h4>
+<p>Para generar el expediente completo necesito:</p>
+<ul>
+<li style="display: flex; align-items: center; gap: 4px;">
+  ${context.proceso ? 
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>' : 
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+  }
+  Descripción del proceso: ${context.proceso || 'Pendiente'}
+</li>
+<li style="display: flex; align-items: center; gap: 4px;">
+  ${context.entidad ? 
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>' : 
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+  }
+  Entidad contratante: ${context.entidad || 'Pendiente'}
+</li>
+<li style="display: flex; align-items: center; gap: 4px;">
+  ${context.fecha ? 
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>' : 
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+  }
+  Fecha límite: ${context.fecha || 'Pendiente'}
+</li>
+</ul>
+<p>Completa el contexto para obtener documentos más precisos.</p>
+</div>`,      default: `<div class="ai-response">
+<h4 style="display: flex; align-items: center; gap: 8px;">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+  Mini-CELIA (Modo Offline)
+</h4>
+<p>Entiendo tu consulta sobre: "<em>${message}</em>"</p>
+<p>Actualmente estoy funcionando en modo offline. Para obtener respuestas inteligentes y generar documentos con IA:</p>
+<ol>
+<li style="display: flex; align-items: center; gap: 4px;">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+  Inicia el backend FastAPI (puerto 8000)
+</li>
+<li style="display: flex; align-items: center; gap: 4px;">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <circle cx="12" cy="16" r="1"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+  Configura tu API key de OpenAI
+</li>
+<li style="display: flex; align-items: center; gap: 4px;">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M1 4v6h6"/>
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+  </svg>
+  Recarga la página
+</li>
+</ol>
+<p><strong>Mientras tanto, puedes usar las acciones rápidas para generar contenido básico.</strong></p>
+</div>`
     }
-    
+
+    const type = this.detectRequestType(message)
+    return responses[type] || responses.default
+  }
+
+  getMockCompliance() {
     return {
-      checked: true,
-      ok: notes.length === 0,
-      notes
+      dnsh: { passed: true, details: 'DNSH: Sin impacto negativo identificado' },
+      rgpd: { passed: true, details: 'RGPD: Cumple requisitos de protección de datos' },
+      fraccionamiento: { passed: true, details: 'No fraccionamiento: Objeto contractual único' },
+      overall: 'CUMPLE',
+      recommendations: ['Verificar clausulado específico antes de publicación']
+    }
+  }
+
+  getMockCoherence() {
+    return {
+      jn_ppt: { coherent: true, details: 'Objeto coherente entre JN y PPT' },
+      ppt_cec: { coherent: true, details: 'Presupuesto alineado con especificaciones' },
+      overall: 'COHERENTE',
+      warnings: []
+    }
+  }  getMockComplete(context) {
+    return {
+      jn: this.getMockJN(context),
+      ppt: `<h3 style="display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+        </svg>
+        Pliego de Prescripciones Técnicas
+      </h3>
+      <p>Generado automáticamente para: ${context.proceso || 'el proceso'}</p>`,
+      cec: `<h3 style="display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        Cuadro Económico de Costes
+      </h3>
+      <p>Presupuesto estimativo para: ${context.proceso || 'el proceso'}</p>`,
+      cr: `<h3 style="display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <path d="M9 9h6v6H9z"/>
+        </svg>
+        Cuadro Resumen
+      </h3>
+      <p>Resumen ejecutivo del expediente</p>`
     }
   }
 }
 
-export const apiService = new ApiService()
+// Exportar instancia singleton
+export default new ApiService()
