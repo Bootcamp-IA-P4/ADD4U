@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 # Este prompt toma la información de entrada y la estructura según el esquema Pydantic.
 prompt_a_template = ChatPromptTemplate.from_messages(
     [
-        ("system", "Eres un asistente experto en la redacción de Justificaciones de la Necesidad para licitaciones públicas. Tu tarea es extraer y estructurar la información proporcionada por el usuario en un formato JSON que cumpla estrictamente con el siguiente esquema Pydantic:\n\n{format_instructions}\n\nSi algún campo no puede ser inferido de la información proporcionada, déjalo como nulo o vacío según el tipo de dato, pero no inventes información crítica. Asegúrate de que el JSON sea válido y completo según el esquema. {rag_context}"),
+        ("system", "Eres un asistente experto en la redacción de Justificaciones de la Necesidad para licitaciones públicas. Tu tarea es extraer y estructurar la información proporcionada por el usuario en un formato JSON que cumpla estrictamente con el siguiente esquema Pydantic:\n\n{format_instructions}\n\nSi algún campo no puede ser inferido de la información proporcionada, déjalo como nulo o vacío según el tipo de dato, pero no inventes información crítica. Asegúrate de que el JSON sea válido y completo según el esquema."),
         ("human", "Genera la Justificación de la Necesidad con la siguiente información:\n\n{user_input}"),
     ]
 )
