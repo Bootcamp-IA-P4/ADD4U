@@ -7,7 +7,7 @@ class ApiService {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000, // Aumentado para llamadas a OpenAI
+      timeout: 50000, 
       headers: {
         'Content-Type': 'application/json',
       },
@@ -39,55 +39,234 @@ class ApiService {
         return Promise.reject(error)
       }
     )
-  }
-  // Método principal: Generación de Justificación de la Necesidad
-  async generateJN(context) {
+  }  // Método principal: Generación de Justificación de la Necesidad
+  async generateJN(userInput) {
     try {
-      console.log('📋 Generating JN with context:', context)
-      const response = await this.client.post('/justificacion/de_la_necesidad', {
-        proceso: context.proceso || '',
-        entidad: context.entidad || '',
-        fecha_limite: context.fecha || '',
-        presupuesto: context.presupuesto || '',
-        descripcion: context.descripcion || ''
-      })
-      return {
-        success: true,
-        content: response.data.justificacion || response.data,
-        citations: response.data.fuentes || []
+      console.log('📋 generateJN userInput:', userInput)
+      
+      // Construir el payload exacto que espera el backend
+      const body = {
+        user_input: {
+          expediente_id: userInput.expediente_id,
+          seccion: userInput.seccion,
+          user_text: userInput.user_text
+        },
+        structured_llm_choice: userInput.structured_llm_choice || 'openai',
+        narrative_llm_choice: userInput.narrative_llm_choice || 'groq'
       }
+      
+      console.log('📤 Sending to backend:', body)
+      const response = await this.client.post('/justificacion/generar_jn', body)
+      
+      // Formatear la respuesta para mostrar en el chat
+      const jnData = response.data
+      const formattedContent = this.formatJNResponse(jnData)
+      
+      return { success: true, content: formattedContent }
     } catch (error) {
-      console.error('❌ Error generating JN:', error)
+      console.error('❌ Error generating JN (real):', error)
       return {
         success: false,
         error: error.response?.data?.detail || error.message,
-        content: this.getMockJN(context)
+        content: this.getMockJN(userInput)
       }
     }
   }
+  // Formatear respuesta de JN del backend para mostrar en el chat
+  formatJNResponse(jnData) {
+    console.log('🔍 Procesando respuesta del backend:', jnData)
+    
+    // Extraer la narrativa limpia según la estructura de respuesta del backend
+    let cleanNarrative = this.extractCleanNarrative(jnData)
+    
+    // Si no hay narrativa extraída, usar un formato básico
+    if (!cleanNarrative) {
+      cleanNarrative = 'Justificación de la Necesidad generada correctamente. Los datos estructurados han sido procesados por el sistema.'
+    }
+    
+    const now = new Date().toLocaleString('es-ES')
+    
+    return `<div class="generated-content">
+<h3 style="color: var(--cm-red); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+  </svg>
+  Justificación de la Necesidad (JN) - IA
+</h3>
 
-  // Chat inteligente con OpenAI
+<div style="background: #f8f9fa; padding: 16px; border-left: 4px solid var(--cm-red); margin: 12px 0; border-radius: 8px; line-height: 1.6;">
+${cleanNarrative}
+</div>
+
+<p><small style="display: flex; align-items: center; gap: 4px; color: #666;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 6l0 6l4 4"/>
+  </svg>
+  <strong>Generado:</strong> ${now} - Contenido creado con IA (OpenAI GPT-4)
+</small></p>
+</div>`
+  }  // Extraer solo la narrativa limpia de la respuesta compleja del backend
+  extractCleanNarrative(jnData) {
+    try {
+      console.log('🔍 Extrayendo narrativa de:', jnData)
+      
+      // Caso 1: Si hay un campo 'narrativa' directo (principal según el backend)
+      if (jnData.narrativa && typeof jnData.narrativa === 'string') {
+        console.log('✅ Narrativa encontrada en campo directo')
+        return this.cleanNarrativeText(jnData.narrativa)
+      }
+      
+      // Caso 2: Si la narrativa está en un objeto anidado
+      if (jnData.data?.narrativa && typeof jnData.data.narrativa === 'string') {
+        console.log('✅ Narrativa encontrada en data.narrativa')
+        return this.cleanNarrativeText(jnData.data.narrativa)
+      }
+      
+      // Caso 3: Si hay un campo 'response' que contiene la narrativa
+      if (jnData.response && typeof jnData.response === 'string') {
+        console.log('✅ Narrativa encontrada en response')
+        return this.cleanNarrativeText(jnData.response)
+      }
+      
+      // Caso 4: Si está en 'content', 'text' o 'texto'
+      if (jnData.content && typeof jnData.content === 'string') {
+        console.log('✅ Narrativa encontrada en content')
+        return this.cleanNarrativeText(jnData.content)
+      }
+      
+      if (jnData.text && typeof jnData.text === 'string') {
+        console.log('✅ Narrativa encontrada en text')
+        return this.cleanNarrativeText(jnData.text)
+      }
+      
+      if (jnData.texto && typeof jnData.texto === 'string') {
+        console.log('✅ Narrativa encontrada en texto')
+        return this.cleanNarrativeText(jnData.texto)
+      }
+      
+      // Caso 5: Buscar en campos anidados del objeto JustificacionNecesidadStructured
+      if (typeof jnData === 'object' && jnData !== null) {
+        // Buscar recursivamente en objetos anidados
+        for (const [key, value] of Object.entries(jnData)) {
+          if (typeof value === 'object' && value !== null) {
+            if (value.narrativa && typeof value.narrativa === 'string') {
+              console.log(`✅ Narrativa encontrada en ${key}.narrativa`)
+              return this.cleanNarrativeText(value.narrativa)
+            }
+          }
+          
+          // Buscar en campos string largos que parezcan narrativa
+          if (typeof value === 'string' && value.length > 50 && this.looksLikeNarrative(value)) {
+            console.log(`✅ Narrativa encontrada en campo '${key}'`)
+            return this.cleanNarrativeText(value)
+          }
+        }
+      }
+      
+      console.warn('⚠️ No se encontró narrativa en la respuesta:', Object.keys(jnData))
+      return null
+      
+    } catch (error) {
+      console.error('❌ Error extrayendo narrativa:', error)
+      return null
+    }
+  }
+  
+  // Limpiar el texto de la narrativa (remover JSON, caracteres especiales, etc.)
+  cleanNarrativeText(text) {
+    try {
+      // Si el texto contiene JSON, intentar extraerlo
+      if (text.includes('{') && text.includes('}')) {
+        // Buscar si hay JSON embebido
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          try {
+            const jsonObj = JSON.parse(jsonMatch[0])
+            
+            // Si el JSON tiene campos de narrativa conocidos
+            if (jsonObj.narrativa) return this.formatNarrativeText(jsonObj.narrativa)
+            if (jsonObj.texto) return this.formatNarrativeText(jsonObj.texto)
+            if (jsonObj.contenido) return this.formatNarrativeText(jsonObj.contenido)
+            if (jsonObj.justificacion) return this.formatNarrativeText(jsonObj.justificacion)
+            
+            // Si es un objeto con múltiples campos de texto, combinarlos
+            const textFields = Object.values(jsonObj)
+              .filter(val => typeof val === 'string' && val.length > 20)
+            
+            if (textFields.length > 0) {
+              return textFields.map(text => this.formatNarrativeText(text)).join('<br><br>')
+            }
+          } catch (jsonError) {
+            console.warn('⚠️ No se pudo parsear JSON embebido:', jsonError)
+          }
+        }
+        
+        // Si no se pudo extraer JSON, removerlo y usar el texto restante
+        text = text.replace(/\{[\s\S]*\}/g, '').trim()
+      }
+      
+      return this.formatNarrativeText(text)
+      
+    } catch (error) {
+      console.error('❌ Error limpiando narrativa:', error)
+      return text
+    }
+  }
+  
+  // Formatear texto de narrativa para mostrar limpio
+  formatNarrativeText(text) {
+    if (!text || typeof text !== 'string') return ''
+    
+    return text
+      .trim()
+      .replace(/\n\n+/g, '<br><br>')  // Párrafos
+      .replace(/\n/g, '<br>')         // Saltos de línea simples
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Negrita markdown
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Cursiva markdown
+      .replace(/#{1,6}\s*(.*)/g, '<strong>$1</strong>')  // Headers markdown
+  }
+    // Verificar si un texto parece ser narrativa (heurística)
+  looksLikeNarrative(text) {
+    if (!text || typeof text !== 'string' || text.length < 50) return false
+    
+    // Palabras clave que indican que es narrativa de JN
+    const jnKeywords = [
+      'justificación', 'necesidad', 'objetivo', 'contratación', 'expediente',
+      'administración', 'servicio', 'obra', 'suministro', 'procedimiento',
+      'licitación', 'adjudicación', 'presupuesto', 'económico', 'normativa',
+      'lcsp', 'rgpd', 'dnsh', 'igualdad', 'accesibilidad', 'público',
+      'mediante', 'decreto', 'artículo', 'disposición', 'establece'
+    ]
+    
+    const lowerText = text.toLowerCase()
+    const keywordMatches = jnKeywords.filter(keyword => lowerText.includes(keyword)).length
+    
+    // Debe tener al menos 2 palabras clave y una longitud razonable
+    return keywordMatches >= 2 || (keywordMatches >= 1 && text.length > 200)
+  }
+
+  // Chat inteligente con OpenAI (ajustado: solo usa generateJN para JN, mock para el resto)
   async chatWithBot(message, context = {}) {
     try {
       console.log('💬 Sending message to bot:', message)
-      
+
       // Detectar tipo de solicitud
       const requestType = this.detectRequestType(message)
-      
+
       if (requestType === 'jn') {
-        return await this.generateJN(context)
+        // Para JN delegamos al endpoint real
+        return await this.generateJN({ user_input: context })
       }
-      
-      // Para otros tipos de consultas, usar endpoint de chat general
-      const response = await this.client.post('/chat', {
-        message,
-        context,
-        type: requestType
-      })
-      
+
+      // Si solo existe el endpoint de JN en el backend, devolvemos mock local para el resto
+      console.warn('⚠️ Endpoint /chat no disponible - usando respuesta local mock para tipo:', requestType)
       return {
         success: true,
-        content: response.data.response || response.data.message,
+        content: this.getMockResponse(message, context),
         type: requestType
       }
     } catch (error) {
@@ -192,6 +371,7 @@ class ApiService {
     }
   }
   // ============ MÉTODOS MOCK PARA FALLBACK ============
+
   getMockJN(context) {
     const now = new Date().toLocaleString('es-ES')
     return `<div class="generated-content">
@@ -280,21 +460,21 @@ class ApiService {
 <li style="display: flex; align-items: center; gap: 4px;">
   ${context.proceso ? 
     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>' : 
-    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' 
   }
   Descripción del proceso: ${context.proceso || 'Pendiente'}
 </li>
 <li style="display: flex; align-items: center; gap: 4px;">
   ${context.entidad ? 
     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>' : 
-    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' 
   }
   Entidad contratante: ${context.entidad || 'Pendiente'}
 </li>
 <li style="display: flex; align-items: center; gap: 4px;">
   ${context.fecha ? 
     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>' : 
-    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' 
   }
   Fecha límite: ${context.fecha || 'Pendiente'}
 </li>

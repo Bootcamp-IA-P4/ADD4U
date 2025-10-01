@@ -7,6 +7,12 @@ const ChatSection = () => {
   const [inputValue, setInputValue] = useState('')
   const [isThinking, setIsThinking] = useState(false)
   const [backendStatus, setBackendStatus] = useState({ connected: null, checking: true })
+  const [conversationState, setConversationState] = useState({
+    waitingFor: null, // 'expediente_id' | 'user_description' | null
+    selectedJNType: null,
+    expediente_id: null,
+    user_text: null
+  })
   const chatBoxRef = useRef(null)
   const textareaRef = useRef(null)
   
@@ -65,75 +71,84 @@ const ChatSection = () => {
     
     checkBackend()
   }, [])
-  
-  const handleQuickAction = async (action) => {
-    const actionTexts = {
-      'jn': 'Genera Justificacion de la Necesidad (JN)',
-      'ppt': 'Genera Pliego de Prescripciones Tecnicas (PPT)', 
-      'cec': 'Genera Cuadro Economico de Costes (CEC)',
-      'cr': 'Genera Cuadro Resumen (CR)',
-      'complete': 'Genera expediente completo (JN + PPT + CEC + CR)',
-      'validate': 'Valida cumplimiento normativo'
+  const getJNTypeDescription = (jnType) => {
+    const descriptions = {
+      'jn_obras': 'Obras públicas y construcción',
+      'jn_servicios': 'Servicios generales',
+      'jn_suministros': 'Suministros y materiales',
+      'jn_mantenimiento': 'Mantenimiento y conservación',
+      'jn_tecnologia': 'Tecnología y sistemas informáticos',
+      'jn_formacion': 'Formación y capacitación'
     }
-    
-    const text = actionTexts[action]
-    addMessage('user', text)
-    setIsThinking(true)
+    return descriptions[jnType] || 'Justificación de Necesidad'
+  }
 
+  const generateJNFromConversation = async (expedienteId, userText, selectedType) => {
     try {
-      let result
+      console.log('🔍 Generando JN con datos:', { expedienteId, userText, selectedType })
       
-      if (action === 'jn') {
-        result = await apiService.generateJN(state.ctx)
-      } else if (action === 'validate') {
-        result = await apiService.validateCompliance(state.draft)
-      } else if (action === 'complete') {
-        result = await apiService.generateComplete(state.ctx)
-      } else {
-        result = await apiService.chatWithBot(text, state.ctx)
+      const formData = {
+        expediente_id: expedienteId,
+        seccion: "JN.1", 
+        user_text: userText,
+        structured_llm_choice: "openai",
+        narrative_llm_choice: "groq"
       }
 
+      console.log('📤 Enviando datos a la API:', formData)
+      
+      // Validar que tenemos todos los datos necesarios
+      if (!formData.expediente_id || !formData.user_text) {
+        throw new Error(`Faltan datos requeridos: expediente_id=${formData.expediente_id}, user_text=${formData.user_text}`)
+      }
+      
+      const result = await apiService.generateJN(formData)
+      
       setIsThinking(false)
       
       if (result.success) {
-        if (action === 'complete' && result.sections) {
-          // Para expediente completo, mostrar todas las secciones
-          Object.entries(result.sections).forEach(([key, content]) => {
-            addMessage('bot', '<h4>Seccion ' + key.toUpperCase() + '</h4>' + content)
-          })
-        } else if (action === 'validate' && result.results) {
-          // Para validación, mostrar resultados estructurados
-          const complianceHTML = '<div class="compliance-results">' +
-            '<h4 style="color: var(--cm-red);">Resultados de Validacion</h4>' +
-            '<p><strong>Estado general:</strong> ' + result.results.overall + '</p>' +
-            '<ul style="list-style: none; padding-left: 0;">' +
-            '<li><strong>DNSH:</strong> ' + (result.results.dnsh?.details || 'N/A') + '</li>' +
-            '<li><strong>RGPD:</strong> ' + (result.results.rgpd?.details || 'N/A') + '</li>' +
-            '<li><strong>Fraccionamiento:</strong> ' + (result.results.fraccionamiento?.details || 'N/A') + '</li>' +
-            '</ul>' +
-            '</div>'
-          addMessage('bot', complianceHTML)
-        } else {
-          addMessage('bot', result.content)
-        }
-        
-        if (!result.success && result.error) {
-          console.warn('API returned success=false:', result.error)
-        }
-      } else {
-        // Mostrar contenido de fallback con indicador de error
         addMessage('bot', result.content)
+      } else {
+        addMessage('bot', result.content || 'Error al generar la JN. Por favor, inténtalo de nuevo.')
         if (result.error) {
-          console.error('API Error:', result.error)
+          console.error('JN Generation Error:', result.error)
         }
-      }
-    } catch (error) {
+      }    } catch (error) {
       setIsThinking(false)
-      console.error('Error in handleQuickAction:', error)
-      addMessage('bot', 'Error: ' + error.message + '. Mostrando respuesta de fallback.')
+      console.error('Error generating JN:', error)
+      addMessage('bot', `❌ <strong>Error al conectar con la API:</strong> ${error.message}<br><br>Verifica que el backend esté funcionando en <code>http://localhost:8000</code> y que tengas las variables de entorno configuradas.`)
+    }
+
+    // Reset conversation state
+    setConversationState({
+      waitingFor: null,
+      selectedJNType: null,
+      expediente_id: null,
+      user_text: null
+    })
+  }
+  const handleQuickAction = (action) => {
+    if (action.startsWith('jn_')) {
+      const jnDescription = getJNTypeDescription(action)
+      
+      // Set conversation state and ask for expediente ID
+      setConversationState({
+        waitingFor: 'expediente_id',
+        selectedJNType: action,
+        expediente_id: null,
+        user_text: null
+      });      const message = `<strong>📋 Iniciando Justificación de Necesidad: ${jnDescription}</strong><br><br>` +
+        `Para generar tu JN necesito estos datos:<br>` +
+        `• <strong>ID del expediente</strong> (usuario define)<br>` +
+        `• <strong>Descripción detallada</strong> (usuario define)<br>` +
+        `• <strong>Sección:</strong> JN.1 (autocompletado como inicio)<br><br>` +
+        `<strong>Empezamos:</strong><br>` +
+        `¿Cómo quieres llamar a tu expediente? Dame el ID o título.<br><br>` +
+        `<em>Ejemplos: PTX_001, OBR_MERCADILLOS, SRV_LIMPIEZA, TEC_SOFTWARE, etc.</em>`
+
+      addMessage('bot', message)
     }
   }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     const text = inputValue.trim()
@@ -141,6 +156,64 @@ const ChatSection = () => {
 
     addMessage('user', escapeHtml(text))
     setInputValue('')
+
+    // Handle conversation flow for JN generation
+    if (conversationState.waitingFor === 'expediente_id') {
+      // User provided expediente ID
+      const expedienteId = text.toUpperCase().replace(/\s+/g, '_')
+      
+      setConversationState(prev => ({
+        ...prev,
+        waitingFor: 'user_description',
+        expediente_id: expedienteId
+      }));
+
+      const message = `<strong>✓ Expediente: ${expedienteId}</strong><br><br>` +
+        `Perfecto! Ahora necesito que me expliques detalladamente:<br><br>` +
+        `• <strong>¿Qué actividades o servicios incluye?</strong><br>` +
+        `• <strong>¿Dónde se llevará a cabo?</strong><br>` +
+        `• <strong>¿Por qué es necesario este expediente?</strong><br>` +
+        `• <strong>¿Cuál es el objetivo principal?</strong><br><br>` +
+        `Cuanto más detalle me proporciones, mejor será la justificación que genere para ti.`
+
+      addMessage('bot', message)
+      return
+    }
+
+    if (conversationState.waitingFor === 'user_description') {
+      // User provided description, now generate JN
+      setConversationState(prev => ({
+        ...prev,
+        waitingFor: null,
+        user_text: text
+      }));
+
+      const confirmMessage = `<strong>✅ Información completa recibida</strong><br><br>` +
+        `<strong>Expediente:</strong> ${conversationState.expediente_id}<br>` +
+        `<strong>Tipo:</strong> ${getJNTypeDescription(conversationState.selectedJNType)}<br>` +
+        `<strong>Descripción:</strong> ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}<br><br>` +
+        `🔄 <strong>Generando tu Justificación de la Necesidad...</strong>`
+
+      addMessage('bot', confirmMessage)
+      
+      // Update conversation state and immediately start generation
+      setConversationState(prev => ({
+        ...prev,
+        waitingFor: null,
+        user_text: text
+      }))
+        // Start thinking animation immediately
+      setIsThinking(true)
+
+      // Generate JN with complete data - pasar datos directamente para evitar problemas de estado
+      setTimeout(() => {
+        generateJNFromConversation(conversationState.expediente_id, text, conversationState.selectedJNType)
+      }, 800)
+      
+      return
+    }
+
+    // Regular chat flow
     setIsThinking(true)
 
     try {
@@ -239,7 +312,6 @@ const ChatSection = () => {
       )
     }
   }
-
   const getStatusClass = () => {
     if (backendStatus.checking) {
       return 'bg-yellow-50 text-yellow-700 border border-yellow-200'
@@ -247,6 +319,16 @@ const ChatSection = () => {
       return 'bg-green-50 text-green-700 border border-green-200'
     } else {
       return 'bg-red-50 text-red-700 border border-red-200'
+    }
+  }
+
+  const getPlaceholder = () => {
+    if (conversationState.waitingFor === 'expediente_id') {
+      return 'Escribe el ID o título del expediente (ej: PTX_001, OBR_MERCADILLOS)...'
+    } else if (conversationState.waitingFor === 'user_description') {
+      return 'Describe detalladamente las actividades, objetivos y justificación...'
+    } else {
+      return 'Escribe tu consulta aqui o usa las acciones rapidas de arriba...'
     }
   }
 
@@ -325,76 +407,72 @@ const ChatSection = () => {
             Acciones Rapidas
           </h3>
           <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent"></div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        </div>        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <button 
-            onClick={() => handleQuickAction('jn')}
+            onClick={() => handleQuickAction('jn_obras')}
             disabled={isThinking}
             className="quick-action-btn px-4 py-3 text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border-2 border-emerald-200 disabled:opacity-50 font-medium"
           >
             <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
+              <path d="M3 21h18"/>
+              <path d="M5 21V7l8-4v18"/>
+              <path d="M19 21V11l-6-4"/>
             </svg>
-            Generar JN
+            JN Obras
           </button>
           <button 
-            onClick={() => handleQuickAction('ppt')}
+            onClick={() => handleQuickAction('jn_servicios')}
             disabled={isThinking}
             className="quick-action-btn px-4 py-3 text-sm bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl border-2 border-blue-200 disabled:opacity-50 font-medium"
           >
             <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
-            Generar PPT
+            JN Servicios
           </button>
           <button 
-            onClick={() => handleQuickAction('cec')}
+            onClick={() => handleQuickAction('jn_suministros')}
             disabled={isThinking}
             className="quick-action-btn px-4 py-3 text-sm bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl border-2 border-amber-200 disabled:opacity-50 font-medium"
           >
             <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="1" x2="12" y2="23"/>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              <path d="M7.5 8a5.5 5.5 0 1 1 9 0"/>
+              <path d="M12 8v13l-4-7 4-6z"/>
             </svg>
-            Generar CEC
+            JN Suministros
           </button>
           <button 
-            onClick={() => handleQuickAction('cr')}
+            onClick={() => handleQuickAction('jn_mantenimiento')}
             disabled={isThinking}
             className="quick-action-btn px-4 py-3 text-sm bg-purple-50 hover:bg-purple-100 text-purple-800 rounded-xl border-2 border-purple-200 disabled:opacity-50 font-medium"
           >
             <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <path d="M9 9h6v6H9z"/>
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
             </svg>
-            Generar CR
+            JN Mantenimiento
           </button>
           <button 
-            onClick={() => handleQuickAction('complete')}
+            onClick={() => handleQuickAction('jn_tecnologia')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-red-50 hover:bg-red-100 text-red-800 rounded-xl border-2 border-red-200 disabled:opacity-50 font-medium col-span-2 md:col-span-1"
+            className="quick-action-btn px-4 py-3 text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-xl border-2 border-indigo-200 disabled:opacity-50 font-medium"
           >
             <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
-            Expediente completo
+            JN Tecnología
           </button>
           <button 
-            onClick={() => handleQuickAction('validate')}
+            onClick={() => handleQuickAction('jn_formacion')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-gray-50 hover:bg-gray-100 text-gray-800 rounded-xl border-2 border-gray-200 disabled:opacity-50 font-medium col-span-2 md:col-span-2"
+            className="quick-action-btn px-4 py-3 text-sm bg-green-50 hover:bg-green-100 text-green-800 rounded-xl border-2 border-green-200 disabled:opacity-50 font-medium"
           >
             <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="9,11 12,14 22,4"/>
-              <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9s4.03-9 9-9c1.11 0 2.16.2 3.14.57"/>
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
             </svg>
-            Validar cumplimiento normativo
+            JN Formación
           </button>
         </div>
       </div>
@@ -410,9 +488,8 @@ const ChatSection = () => {
               rows="2"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="form-textarea border-0 bg-gray-50 focus:bg-white"
-              placeholder="Escribe tu consulta aqui o usa las acciones rapidas de arriba..."
+              onKeyDown={handleKeyDown}              className="form-textarea border-0 bg-gray-50 focus:bg-white"
+              placeholder={getPlaceholder()}
             />
           </div>
           <button 
@@ -436,8 +513,7 @@ const ChatSection = () => {
             )}
           </button>
         </form>
-      </div>
-    </section>
+      </div>    </section>
   )
 }
 
