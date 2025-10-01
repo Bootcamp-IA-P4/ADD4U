@@ -74,3 +74,4 @@ flowchart TD
     RH --> OUTS["🗄️ outputs (ledger)"]
 
     OUTS --> EN["📄 Documento final (JN, PPT, CEC, CR)"]
+```
