@@ -71,7 +71,7 @@ async def generate_justificacion_necesidad(
     try:
         maybe_json = json.loads (narrative_output.content)
         if isinstance(maybe_json, dict):
-            final_outpit.narrativa = maybe_json.get("texto") or "\n\n".join(str(v) for v in maybe_json.values())
+            final_output.narrativa = maybe_json.get("texto") or "\n\n".join(str(v) for v in maybe_json.values())
         else:
             final_output.narrativa = str (narrative_output.content)
     except Exception:
