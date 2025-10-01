@@ -26,6 +26,7 @@ async def generate_justificacion_necesidad(
     user_input: UserRequest,
     structured_llm_choice: str = "openai", # Añadimos el selector para el LLM estructurado
     narrative_llm_choice: str = "groq", # Añadimos el selector para el LLM narrativo
+    rag_context: Optional[str] = None,
 ) -> JustificacionNecesidadStructured:
     """
     Genera la Justificación de la Necesidad usando LLMs seleccionados por el usuario.
@@ -52,8 +53,7 @@ async def generate_justificacion_necesidad(
     narrative_chain = prompt_b_template | narrative_llm
 
     # Ejecutar las cadenas
-    
-    structured_output = await structured_chain.ainvoke({"user_input": user_input.user_text, "format_instructions": parser_structured_jn.get_format_instructions()})
+    structured_output = await structured_chain.ainvoke({"user_input": user_input.user_text, "format_instructions": parser_structured_jn.get_format_instructions(), "rag_context": rag_context if rag_context else ""})
     
     #Normalizar Pydantic
     if isinstance(structured_output, JustificacionNecesidadStructured):
