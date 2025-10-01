@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_mongodb import MongoDBAtlasVectorSearch
+from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 import os
 
@@ -10,6 +11,7 @@ router = APIRouter(prefix="/normativa", tags=["normativa"])
 
 # Config embeddings (HuggingFace, gratis, local)
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # VectorStore conectado a Mongo Atlas
 vectorstore = MongoDBAtlasVectorSearch.from_connection_string(

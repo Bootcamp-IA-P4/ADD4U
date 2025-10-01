@@ -9,3 +9,10 @@ langchain
 langchain-groq
 langchain-openai
 pydantic
+langchain-community 
+langchain-mongodb 
+pypdf
+tiktoken
+motor
+sentence-transformers
+langchain-huggingface
