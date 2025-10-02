@@ -8,6 +8,21 @@
 ![Version](https://img.shields.io/badge/Version-2.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+### 🛠️ Tecnologías
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB">
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI">
+  <img src="https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white" alt="LangChain">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/Groq-000000?style=for-the-badge&logo=groq&logoColor=white" alt="Groq">
+</p>
+
 </div>
 
 ---
@@ -514,6 +529,66 @@ COPY --from=0 /app/dist /usr/share/nginx/html
 
 ---
 
+## 👥 **Contribuidores**
+
+<div align="center">
+
+Gracias a estas personas que han contribuido a este proyecto:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/contributor1">
+        <img src="https://github.com/identicons/contributor1.png" width="100px;" alt="Contributor 1"/>
+        <br />
+        <sub><b>Contribuidor 1</b></sub>
+      </a>
+      <br />
+      <sub>Frontend & UI/UX</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor2">
+        <img src="https://github.com/identicons/contributor2.png" width="100px;" alt="Contributor 2"/>
+        <br />
+        <sub><b>Contribuidor 2</b></sub>
+      </a>
+      <br />
+      <sub>Backend & API</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor3">
+        <img src="https://github.com/identicons/contributor3.png" width="100px;" alt="Contributor 3"/>
+        <br />
+        <sub><b>Contribuidor 3</b></sub>
+      </a>
+      <br />
+      <sub>IA & LangChain</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor4">
+        <img src="https://github.com/identicons/contributor4.png" width="100px;" alt="Contributor 4"/>
+        <br />
+        <sub><b>Contribuidor 4</b></sub>
+      </a>
+      <br />
+      <sub>Base de Datos</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor5">
+        <img src="https://github.com/identicons/contributor5.png" width="100px;" alt="Contributor 5"/>
+        <br />
+        <sub><b>Contribuidor 5</b></sub>
+      </a>
+      <br />
+      <sub>Documentación & Testing</sub>
+    </td>
+  </tr>
+</table>
+
+</div>
+
+---
+
 ## 📄 **Licencia y Créditos**
 
 ### **Licencia:**
@@ -563,38 +638,7 @@ Desarrollado con ❤️ para modernizar la administración pública española
 
 </div>
 
-### 🔧 **Configuración de Variables de Entorno**
-```powershell
-# 1. Copiar plantilla de variables de entorno
-copy .env.example .env
 
-# 2. Editar el archivo .env con tus API keys
-notepad .env
-```
-
-**Contenido del archivo .env:**
-```bash
-# Configuración OpenAI (REQUERIDO para IA)
-OPENAI_API_KEY=sk-proj-tu-openai-api-key-aqui
-
-# Configuración LangChain (opcional)
-LANGCHAIN_TRACING_V2=false
-LANGCHAIN_API_KEY=lsv2_pt_tu-langchain-key-aqui
-LANGCHAIN_PROJECT="Mini-CELIA-JN-Prototype"
-
-# Configuración Groq (opcional)
-GROQ_API_KEY=gsk_tu-groq-key-aqui
-
-# Configuración MongoDB (para persistencia)
-MONGO_URI=mongodb+srv://usuario:password@cluster.mongodb.net/
-```
-
-### 📱 **URLs del Sistema**
-- 🌐 **Aplicación Principal**: http://localhost:5173
-- 🔧 **API Documentation**: http://localhost:8000/docs
-- 📊 **Health Check**: http://localhost:8000/health
-
----
 
 ## ✨ **Características Principales**
 
@@ -619,31 +663,7 @@ MONGO_URI=mongodb+srv://usuario:password@cluster.mongodb.net/
 
 ---
 
-## 🏗️ **Arquitectura del Sistema**
-
-### 🔧 **Stack Tecnológico**
-
-#### **Frontend** (Interfaz de Usuario)
-```
-React 18 + Vite + Tailwind CSS
-├── Componentes Modulares
-├── Hooks Personalizados  
-├── Estados Globales con Context
-├── Diseño Mobile-First
-└── Iconos SVG Profesionales
-```
-
-#### **Backend** (API + IA)
-```
-FastAPI + Python 3.11+
-├── OpenAI GPT-4 Integration
-├── MongoDB Database
-├── LangChain Framework
-├── Async/Await Architecture
-└── RESTful API Design
-```
-
-### 📂 **Estructura del Proyecto**
+## 📂 **Estructura del Proyecto**
 ```
 ADD4U/
 ├── 📁 backend/                          # 🔧 API FastAPI + IA
