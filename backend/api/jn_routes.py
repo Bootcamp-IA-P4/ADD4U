@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict
 from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
-from backend.database.outputs_repository import save_output
+from backend.database.outputs_repository import save_output  # ✅ import único
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
@@ -18,9 +17,6 @@ class GenerateJNRequest(BaseModel):
 async def justificacion_de_la_necesidad(ctx: UserRequest):
     return await build_jn_output(ctx.dict())
 
-from backend.database.outputs_repository import save_output  # 👈 importar función
-
-from backend.database.outputs_repository import save_output  # 👈 asegúrate de importar esto
 
 @router.post("/generar_jn")
 async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
@@ -63,16 +59,6 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
                 json_b_dict.get("seccion", request.user_input.seccion),
                 "B",
                 json_b_dict
-            )
-
-
-        if "json_b" in jn_output:
-            await save_output(
-                expediente_id,
-                documento,
-                jn_output["json_b"].get("seccion", request.user_input.seccion),
-                "B",
-                jn_output["json_b"]
             )
 
         # fallback → si no está dividido, guardamos todo como nodo B
