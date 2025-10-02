@@ -32,7 +32,7 @@ async def generate_justificacion_necesidad(
     Permite especificar el modelo concreto por etapa.
     """
     # Configuración de los modelos de lenguaje
-    llm_openai = ChatOpenAI(model="gpt-5", api_key=settings.openai_api_key) # Usar settings.openai_api_key
+    llm_openai = ChatOpenAI(model="gpt-4.1", api_key=settings.openai_api_key) # Usar settings.openai_api_key
     llm_groq = ChatGroq(model="openai/gpt-oss-120b", temperature=0, api_key=settings.groq_api_key) # Usar settings.groq_api_key
 
     # Seleccionar el LLM para la generación estructurada

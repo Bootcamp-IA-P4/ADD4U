@@ -9,7 +9,8 @@ class UserRequest(BaseModel):
 class ObjetoAlcance(BaseModel):
     objeto: str = Field(description="Descripción del objeto o servicio a contratar.")
     alcance: str = Field(description="Alcance del objeto o servicio, incluyendo cantidades, plazos, etc.")
-
+    ambito: str = Field(description="Ámbito geográfico o funcional de la contratación.")
+"""
 class ContextoProblema(BaseModel):
     problema_actual: str = Field(description="Descripción del problema o necesidad actual que se busca resolver.")
     impacto_problema: str = Field(description="Impacto del problema en la organización o en los usuarios.")
@@ -21,12 +22,14 @@ class Objetivos(BaseModel):
 class AlternativasConsideradas(BaseModel):
     alternativas: List[str] = Field(description="Descripción de las alternativas consideradas para resolver el problema.")
     justificacion_seleccion: str = Field(description="Justificación de por qué la alternativa seleccionada es la más adecuada.")
-
+"""
 class JustificacionNecesidadStructured(BaseModel):
     objeto_alcance: ObjetoAlcance
+    """
     contexto_problema: ContextoProblema
     objetivos: Objetivos
     alternativas_consideradas: AlternativasConsideradas
+    """
     narrativa: Optional[str] = Field(None, description="Narrativa generada de la justificación de necesidad.")
 
 class ChatResponse(RootModel[Dict[str, Any]]):
