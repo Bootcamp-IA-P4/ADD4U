@@ -4,6 +4,7 @@ from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
 from backend.database.outputs_repository import save_output  # ✅ import único
+from backend.utils.dict_utils import to_dict_safe
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
@@ -42,7 +43,7 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
 
         # --- Guardado flexible ---
         if "json_a" in jn_output:
-            json_a_dict = jn_output["json_a"].dict() if hasattr(jn_output["json_a"], "dict") else jn_output["json_a"]
+            json_a_dict = to_dict_safe(jn_output["json_a"])
             await save_output(
                 expediente_id,
                 documento,
@@ -52,7 +53,7 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
             )
 
         if "json_b" in jn_output:
-            json_b_dict = jn_output["json_b"].dict() if hasattr(jn_output["json_b"], "dict") else jn_output["json_b"]
+            json_b_dict = to_dict_safe(jn_output["json_b"])
             await save_output(
                 expediente_id,
                 documento,
@@ -61,14 +62,15 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
                 json_b_dict
             )
 
-        # fallback → si no está dividido, guardamos todo como nodo B
+        # fallback → si no está dividido
         if "json_a" not in jn_output and "json_b" not in jn_output:
+            jn_output_dict = to_dict_safe(jn_output)
             await save_output(
                 expediente_id,
                 documento,
                 request.user_input.seccion,
                 "B",
-                jn_output
+                jn_output_dict
             )
 
         return jn_output
