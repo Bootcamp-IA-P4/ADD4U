@@ -4,6 +4,7 @@ from typing import Any, Optional, Dict
 from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
+from backend.database.outputs_repository import save_output
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
@@ -19,11 +20,14 @@ async def justificacion_de_la_necesidad(ctx: UserRequest):
 
 from backend.database.outputs_repository import save_output  # 👈 importar función
 
+from backend.database.outputs_repository import save_output  # 👈 asegúrate de importar esto
+
 @router.post("/generar_jn")
 async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
     """
-    Genera la Justificación de la Necesidad (JN) en formato estructurado y narrativo.
-    Persiste JSON_A y JSON_B en la colección outputs.
+    Genera la Justificación de la Necesidad (JN).
+    Guarda siempre el resultado en la colección outputs,
+    aunque no venga separado en json_a / json_b todavía.
     """
     if request.structured_llm_choice not in ["openai", "groq"]:
         raise HTTPException(status_code=400, detail="structured_llm_choice debe ser 'openai' o 'groq'")
@@ -40,13 +44,36 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
         expediente_id = request.user_input.expediente_id
         documento = "JN"
 
-        # Guardamos en outputs si existen
+        # --- Guardado flexible ---
         if "json_a" in jn_output:
-            await save_output(expediente_id, documento, jn_output["json_a"]["seccion"], "A", jn_output["json_a"])
-        if "json_b" in jn_output:
-            await save_output(expediente_id, documento, jn_output["json_b"]["seccion"], "B", jn_output["json_b"])
+            await save_output(
+                expediente_id,
+                documento,
+                jn_output["json_a"].get("seccion", request.user_input.seccion),
+                "A",
+                jn_output["json_a"]
+            )
 
-        return jn_output  # seguimos devolviendo la respuesta original
+        if "json_b" in jn_output:
+            await save_output(
+                expediente_id,
+                documento,
+                jn_output["json_b"].get("seccion", request.user_input.seccion),
+                "B",
+                jn_output["json_b"]
+            )
+
+        # fallback → si no está dividido, guardamos todo como nodo B
+        if "json_a" not in jn_output and "json_b" not in jn_output:
+            await save_output(
+                expediente_id,
+                documento,
+                request.user_input.seccion,
+                "B",
+                jn_output
+            )
+
+        return jn_output
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
