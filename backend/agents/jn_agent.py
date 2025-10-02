@@ -52,7 +52,11 @@ async def generate_justificacion_necesidad(
     narrative_chain = prompt_b_template | narrative_llm
 
     # Ejecutar las cadenas
-    structured_output = await structured_chain.ainvoke({"user_input": user_input.user_text, "format_instructions": parser_structured_jn.get_format_instructions(), "rag_context": rag_context if rag_context else ""})
+    structured_output = await structured_chain.ainvoke({
+        "user_input": user_input.user_text,
+        "format_instructions": parser_structured_jn.get_format_instructions(),
+        "rag_context": user_input.rag_context if user_input.rag_context else ""
+    })
     
     #Normalizar Pydantic
     if isinstance(structured_output, JustificacionNecesidadStructured):

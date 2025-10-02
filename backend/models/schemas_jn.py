@@ -5,6 +5,7 @@ class UserRequest(BaseModel):
     expediente_id: str
     seccion: str
     user_text: str
+    rag_context: Optional[str] = None
 
 class ObjetoAlcance(BaseModel):
     objeto: str = Field(description="Descripción del objeto o servicio a contratar.")

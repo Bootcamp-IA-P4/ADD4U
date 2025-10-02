@@ -48,18 +48,19 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
     if request.narrative_llm_choice not in ["openai", "groq"]:
         raise HTTPException(status_code=400, detail="narrative_llm_choice debe ser 'openai' o 'groq'")
 
-    rag_context = ""
+    rag_context_str = ""
     if request.rag_query:
         results = vectorstore.similarity_search(request.rag_query, k=3)
-        rag_context = "\n\nContexto de Normativa Relevante:\n" + "\n---\n".join([doc.page_content for doc in results])
+        rag_context_str = "\n\nContexto de Normativa Relevante:\n" + "\n---\n".join([doc.page_content for doc in results])
+
+    request.user_input.rag_context = rag_context_str
 
     try:
         jn_output = await generate_justificacion_necesidad(
             user_input=request.user_input,
             structured_llm_choice=request.structured_llm_choice,
             narrative_llm_choice=request.narrative_llm_choice,
-            rag_context=rag_context
-        )
+            )
         return jn_output
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
