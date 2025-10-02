@@ -17,11 +17,13 @@ class GenerateJNRequest(BaseModel):
 async def justificacion_de_la_necesidad(ctx: UserRequest):
     return await build_jn_output(ctx.dict())
 
+from backend.database.outputs_repository import save_output  # 👈 importar función
+
 @router.post("/generar_jn")
 async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
     """
     Genera la Justificación de la Necesidad (JN) en formato estructurado y narrativo.
-    Permite seleccionar el LLM a utilizar para cada etapa.
+    Persiste JSON_A y JSON_B en la colección outputs.
     """
     if request.structured_llm_choice not in ["openai", "groq"]:
         raise HTTPException(status_code=400, detail="structured_llm_choice debe ser 'openai' o 'groq'")
@@ -34,6 +36,17 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
             structured_llm_choice=request.structured_llm_choice,
             narrative_llm_choice=request.narrative_llm_choice,
         )
-        return jn_output
+
+        expediente_id = request.user_input.expediente_id
+        documento = "JN"
+
+        # Guardamos en outputs si existen
+        if "json_a" in jn_output:
+            await save_output(expediente_id, documento, jn_output["json_a"]["seccion"], "A", jn_output["json_a"])
+        if "json_b" in jn_output:
+            await save_output(expediente_id, documento, jn_output["json_b"]["seccion"], "B", jn_output["json_b"])
+
+        return jn_output  # seguimos devolviendo la respuesta original
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
