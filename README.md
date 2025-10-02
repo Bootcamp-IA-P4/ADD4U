@@ -406,36 +406,7 @@ MONGODB_URI=mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/mini_celia
 
 ---
 
-## 📂 **Estructura del Proyecto**
 
-```
-ADD4U/
-├── 📁 backend/                 # Backend FastAPI
-│   ├── 📁 agents/             # Agentes de IA
-│   │   └── jn_agent.py        # Agente para JN
-│   ├── 📁 api/                # Rutas de la API
-│   │   └── jn_routes.py       # Endpoints de JN
-│   ├── 📁 core/               # Lógica de negocio
-│   │   └── logic_jn.py        # Lógica de JN
-│   ├── 📁 models/             # Schemas Pydantic
-│   │   └── schemas_jn.py      # Modelos de JN
-│   └── main.py                # Entrada principal
-├── 📁 frontend/               # Frontend React
-│   ├── 📁 src/
-│   │   ├── 📁 components/     # Componentes React
-│   │   │   └── ChatSection.jsx # Chat principal
-│   │   ├── 📁 services/       # Servicios HTTP
-│   │   │   └── apiService.js  # Cliente API
-│   │   └── App.jsx            # Componente raíz
-│   └── package.json           # Dependencias Node
-├── 📁 data/                   # Datos de entrenamiento
-├── 📁 docs/                   # Documentación
-├── .env.example               # Variables de entorno
-├── requirements.txt           # Dependencias Python
-└── README.md                  # Este archivo
-```
-
----
 
 ## 🧪 **Testing y Desarrollo**
 
@@ -510,24 +481,7 @@ COPY --from=0 /app/dist /usr/share/nginx/html
 
 ---
 
-## 🤝 **Contribución y Desarrollo**
 
-### **Para Desarrolladores:**
-
-1. **Fork** del repositorio
-2. **Crear branch** para tu feature: `git checkout -b feature/nueva-funcionalidad`
-3. **Commit** tus cambios: `git commit -am 'Add nueva funcionalidad'`
-4. **Push** al branch: `git push origin feature/nueva-funcionalidad`
-5. **Crear Pull Request**
-
-### **Guidelines:**
-- Seguir **PEP 8** para Python
-- Usar **ESLint** para JavaScript
-- Documentar funciones nuevas
-- Incluir tests unitarios
-- Actualizar README si es necesario
-
----
 
 ## 👥 **Contribuidores**
 
@@ -589,54 +543,9 @@ Gracias a estas personas que han contribuido a este proyecto:
 
 ---
 
-## 📄 **Licencia y Créditos**
 
-### **Licencia:**
-MIT License - Ver archivo `LICENSE` para detalles
 
-### **Créditos:**
-- **OpenAI GPT-4** para generación de contenido
-- **Groq** para modelos open-source
-- **FastAPI** por el excelente framework
-- **React** y **Vite** por la experiencia de desarrollo
-- **MongoDB** para la persistencia de datos
 
-### **Autor:**
-Desarrollado con ❤️ para modernizar la administración pública española
-
----
-
-## 🆘 **Soporte y Documentación**
-
-### **Enlaces Útiles:**
-- 📖 **Documentación API:** `http://localhost:8000/docs`
-- 🐛 **Reportar Bugs:** [GitHub Issues]
-- 💬 **Discusiones:** [GitHub Discussions]
-- 📧 **Contacto:** [tu-email@ejemplo.com]
-
-### **FAQ:**
-
-**❓ ¿Funciona sin internet?**
-✅ Sí, tiene modo offline con contenido mock
-
-**❓ ¿Es gratuito?**
-✅ El software es open-source. Solo pagas las APIs de IA que uses
-
-**❓ ¿Cumple la normativa española?**
-✅ Sí, está diseñado específicamente para LCSP española
-
-**❓ ¿Puedo personalizarlo para mi organización?**
-✅ Completamente personalizable y open-source
-
----
-
-<div align="center">
-
-**🤖 Mini-CELIA - Revolucionando las Licitaciones Públicas con IA**
-
-*Hecho con ❤️ para la modernización de la administración pública*
-
-</div>
 
 
 
@@ -842,17 +751,28 @@ También puedes escribir directamente en el chat:
 Este proyecto ha sido desarrollado como **Proof of Concept (PoC)** para demostrar las capacidades de IA aplicadas al sector público español.
 
 ### 🔧 **Para Desarrolladores**
-```powershell
-# Clonar repositorio
+
+**Configuración inicial:**
+```bash
+# Fork y clonar repositorio
 git clone [repository-url]
 cd ADD4U
 
-# Instalar todo (requiere Node.js + Python)
-npm run install:all
-
-# Desarrollo con hot-reload
-npm run dev:all
+# Crear branch para tu feature
+git checkout -b feature/nueva-funcionalidad
 ```
+
+**Desarrollo:**
+- Seguir **PEP 8** para Python
+- Usar **ESLint** para JavaScript
+- Documentar funciones nuevas
+- Incluir tests unitarios
+- Actualizar README si es necesario
+
+**Enviar cambios:**
+1. **Commit** tus cambios: `git commit -am 'Add nueva funcionalidad'`
+2. **Push** al branch: `git push origin feature/nueva-funcionalidad`
+3. **Crear Pull Request**
 
 ### 🐛 **Reportar Problemas**
 Si encuentras algún problema o tienes sugerencias:
@@ -863,12 +783,29 @@ Si encuentras algún problema o tienes sugerencias:
 
 ---
 
-## 📞 **Soporte y Contacto**
+## 📞 **Soporte y Documentación**
 
-### 🆘 **Resolución de Problemas Comunes**
+### **Enlaces Útiles:**
+- 📖 **Documentación API:** `http://localhost:8000/docs`
+- 🐛 **Reportar Bugs:** [GitHub Issues]
+- 💬 **Discusiones:** [GitHub Discussions]
 
-#### ❌ **"El backend no se conecta"**
-```powershell
+### **FAQ (Preguntas Frecuentes):**
+
+**❓ ¿Funciona sin internet?**
+✅ Sí, tiene modo offline con contenido mock
+
+**❓ ¿Es gratuito?**
+✅ El software es open-source. Solo pagas las APIs de IA que uses
+
+**❓ ¿Cumple la normativa española?**
+✅ Sí, está diseñado específicamente para LCSP española
+
+**❓ ¿Puedo personalizarlo para mi organización?**
+✅ Completamente personalizable y open-source
+
+**❓ ¿El backend no se conecta?**
+```bash
 # Verificar Python instalado
 python --version
 
@@ -876,8 +813,8 @@ python --version
 netstat -an | findstr 8000
 ```
 
-#### ❌ **"El frontend no carga"**
-```powershell
+**❓ ¿El frontend no carga?**
+```bash
 # Verificar Node.js instalado
 node --version
 
@@ -886,17 +823,17 @@ npm cache clean --force
 npm install
 ```
 
-#### ❌ **"OpenAI no responde"**
+**❓ ¿OpenAI no responde?**
 - 🔑 Verificar API Key en archivo `.env`
 - 💳 Comprobar créditos disponibles en OpenAI
 - 🌐 Verificar conexión a internet
 
-### 📧 **Contacto Técnico**
+### 📧 **Contacto**
 Para consultas técnicas avanzadas o implementaciones empresariales, contacta con el equipo de desarrollo.
 
 ---
 
-## 📄 **Licencia y Términos**
+## 📄 **Licencia y Créditos**
 
 ### ⚖️ **Licencia MIT**
 Este proyecto está bajo licencia MIT, lo que permite:
@@ -904,6 +841,13 @@ Este proyecto está bajo licencia MIT, lo que permite:
 - ✅ Modificación y distribución
 - ✅ Uso en proyectos privados
 - ❌ No incluye garantías
+
+### 🙏 **Créditos**
+- **OpenAI GPT-4** para generación de contenido
+- **Groq** para modelos open-source
+- **FastAPI** por el excelente framework
+- **React** y **Vite** por la experiencia de desarrollo
+- **MongoDB** para la persistencia de datos
 
 ### 🏛️ **Uso en Administración Pública**
 Mini-CELIA está diseñado específicamente para:
