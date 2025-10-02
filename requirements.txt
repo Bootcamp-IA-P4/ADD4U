@@ -3,9 +3,16 @@ uvicorn
 pydantic-settings
 python-dotenv
 pymongo
+motor
 groq
 openai
 langchain
 langchain-groq
 langchain-openai
 pydantic
+langchain-community
+langchain-mongodb
+pypdf
+tiktoken
+sentence-transformers
+langchain-huggingface
