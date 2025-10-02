@@ -37,3 +37,31 @@ class ChatResponse(RootModel[Dict[str, Any]]):
     Respuesta en JSON del modelo con la Justificación de Necesidad.
     """
     pass
+
+class OutputJsonA(BaseModel):
+    expediente_id: str
+    documento: str = "JN"
+    seccion: str
+    nodo: str = "A"
+    timestamp: str
+    actor: str = "LLM"
+    secciones_JN: ObjetoAlcance
+    citas_golden: List[str] = []
+    citas_normativas: List[str] = []
+    hash: str
+
+class OutputJsonBRefs(BaseModel):
+    hash_json_A: str
+    citas_golden: List[str] = []
+    citas_normativas: List[str] = []
+
+class OutputJsonB(BaseModel):
+    expediente_id: str
+    documento: str = "JN"
+    seccion: str
+    nodo: str = "B"
+    timestamp: str
+    actor: str = "LLM"
+    narrativa: str
+    refs: OutputJsonBRefs
+    hash: str
