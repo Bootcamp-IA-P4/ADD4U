@@ -46,13 +46,25 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
 
         # --- Guardado flexible ---
         if "json_a" in jn_output:
+            json_a_dict = jn_output["json_a"].dict() if hasattr(jn_output["json_a"], "dict") else jn_output["json_a"]
             await save_output(
                 expediente_id,
                 documento,
-                jn_output["json_a"].get("seccion", request.user_input.seccion),
+                json_a_dict.get("seccion", request.user_input.seccion),
                 "A",
-                jn_output["json_a"]
+                json_a_dict
             )
+
+        if "json_b" in jn_output:
+            json_b_dict = jn_output["json_b"].dict() if hasattr(jn_output["json_b"], "dict") else jn_output["json_b"]
+            await save_output(
+                expediente_id,
+                documento,
+                json_b_dict.get("seccion", request.user_input.seccion),
+                "B",
+                json_b_dict
+            )
+
 
         if "json_b" in jn_output:
             await save_output(
