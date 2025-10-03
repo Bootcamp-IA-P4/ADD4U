@@ -33,10 +33,12 @@ async def insert_pdf_normativa(pdf_path, doc_id, titulo):
 
 async def main():
     pdf_files = glob.glob("pdfs/*.pdf")
-    for i, pdf in enumerate(pdf_files, start=1):
+    for pdf in pdf_files:
         titulo = os.path.basename(pdf)
-        doc_id = f"normativa_{i:02d}"
-        print(f"📄 Insertando {titulo} en normativa_global...")
+        # id a partir del nombre del archivo, sin extensión
+        base_name = os.path.splitext(titulo)[0]
+        doc_id = f"normativa_{base_name}"
+        print(f"📄 Insertando {titulo} en normativa_global con id={doc_id} ...")
         await insert_pdf_normativa(pdf, doc_id, titulo)
 
 if __name__ == "__main__":
