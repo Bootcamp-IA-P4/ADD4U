@@ -8,6 +8,21 @@
 ![Version](https://img.shields.io/badge/Version-2.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+### 🛠️ Tecnologías
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB">
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI">
+  <img src="https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white" alt="LangChain">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/Groq-000000?style=for-the-badge&logo=groq&logoColor=white" alt="Groq">
+</p>
+
 </div>
 
 ---
@@ -391,36 +406,7 @@ MONGODB_URI=mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/mini_celia
 
 ---
 
-## 📂 **Estructura del Proyecto**
 
-```
-ADD4U/
-├── 📁 backend/                 # Backend FastAPI
-│   ├── 📁 agents/             # Agentes de IA
-│   │   └── jn_agent.py        # Agente para JN
-│   ├── 📁 api/                # Rutas de la API
-│   │   └── jn_routes.py       # Endpoints de JN
-│   ├── 📁 core/               # Lógica de negocio
-│   │   └── logic_jn.py        # Lógica de JN
-│   ├── 📁 models/             # Schemas Pydantic
-│   │   └── schemas_jn.py      # Modelos de JN
-│   └── main.py                # Entrada principal
-├── 📁 frontend/               # Frontend React
-│   ├── 📁 src/
-│   │   ├── 📁 components/     # Componentes React
-│   │   │   └── ChatSection.jsx # Chat principal
-│   │   ├── 📁 services/       # Servicios HTTP
-│   │   │   └── apiService.js  # Cliente API
-│   │   └── App.jsx            # Componente raíz
-│   └── package.json           # Dependencias Node
-├── 📁 data/                   # Datos de entrenamiento
-├── 📁 docs/                   # Documentación
-├── .env.example               # Variables de entorno
-├── requirements.txt           # Dependencias Python
-└── README.md                  # Este archivo
-```
-
----
 
 ## 🧪 **Testing y Desarrollo**
 
@@ -495,106 +481,73 @@ COPY --from=0 /app/dist /usr/share/nginx/html
 
 ---
 
-## 🤝 **Contribución y Desarrollo**
 
-### **Para Desarrolladores:**
 
-1. **Fork** del repositorio
-2. **Crear branch** para tu feature: `git checkout -b feature/nueva-funcionalidad`
-3. **Commit** tus cambios: `git commit -am 'Add nueva funcionalidad'`
-4. **Push** al branch: `git push origin feature/nueva-funcionalidad`
-5. **Crear Pull Request**
-
-### **Guidelines:**
-- Seguir **PEP 8** para Python
-- Usar **ESLint** para JavaScript
-- Documentar funciones nuevas
-- Incluir tests unitarios
-- Actualizar README si es necesario
-
----
-
-## 📄 **Licencia y Créditos**
-
-### **Licencia:**
-MIT License - Ver archivo `LICENSE` para detalles
-
-### **Créditos:**
-- **OpenAI GPT-4** para generación de contenido
-- **Groq** para modelos open-source
-- **FastAPI** por el excelente framework
-- **React** y **Vite** por la experiencia de desarrollo
-- **MongoDB** para la persistencia de datos
-
-### **Autor:**
-Desarrollado con ❤️ para modernizar la administración pública española
-
----
-
-## 🆘 **Soporte y Documentación**
-
-### **Enlaces Útiles:**
-- 📖 **Documentación API:** `http://localhost:8000/docs`
-- 🐛 **Reportar Bugs:** [GitHub Issues]
-- 💬 **Discusiones:** [GitHub Discussions]
-- 📧 **Contacto:** [tu-email@ejemplo.com]
-
-### **FAQ:**
-
-**❓ ¿Funciona sin internet?**
-✅ Sí, tiene modo offline con contenido mock
-
-**❓ ¿Es gratuito?**
-✅ El software es open-source. Solo pagas las APIs de IA que uses
-
-**❓ ¿Cumple la normativa española?**
-✅ Sí, está diseñado específicamente para LCSP española
-
-**❓ ¿Puedo personalizarlo para mi organización?**
-✅ Completamente personalizable y open-source
-
----
+## 👥 **Contribuidores**
 
 <div align="center">
 
-**🤖 Mini-CELIA - Revolucionando las Licitaciones Públicas con IA**
+Gracias a estas personas que han contribuido a este proyecto:
 
-*Hecho con ❤️ para la modernización de la administración pública*
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/contributor1">
+        <img src="https://github.com/identicons/contributor1.png" width="100px;" alt="Contributor 1"/>
+        <br />
+        <sub><b>Contribuidor 1</b></sub>
+      </a>
+      <br />
+      <sub>Frontend & UI/UX</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor2">
+        <img src="https://github.com/identicons/contributor2.png" width="100px;" alt="Contributor 2"/>
+        <br />
+        <sub><b>Contribuidor 2</b></sub>
+      </a>
+      <br />
+      <sub>Backend & API</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor3">
+        <img src="https://github.com/identicons/contributor3.png" width="100px;" alt="Contributor 3"/>
+        <br />
+        <sub><b>Contribuidor 3</b></sub>
+      </a>
+      <br />
+      <sub>IA & LangChain</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor4">
+        <img src="https://github.com/identicons/contributor4.png" width="100px;" alt="Contributor 4"/>
+        <br />
+        <sub><b>Contribuidor 4</b></sub>
+      </a>
+      <br />
+      <sub>Base de Datos</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/contributor5">
+        <img src="https://github.com/identicons/contributor5.png" width="100px;" alt="Contributor 5"/>
+        <br />
+        <sub><b>Contribuidor 5</b></sub>
+      </a>
+      <br />
+      <sub>Documentación & Testing</sub>
+    </td>
+  </tr>
+</table>
 
 </div>
 
-### 🔧 **Configuración de Variables de Entorno**
-```powershell
-# 1. Copiar plantilla de variables de entorno
-copy .env.example .env
-
-# 2. Editar el archivo .env con tus API keys
-notepad .env
-```
-
-**Contenido del archivo .env:**
-```bash
-# Configuración OpenAI (REQUERIDO para IA)
-OPENAI_API_KEY=sk-proj-tu-openai-api-key-aqui
-
-# Configuración LangChain (opcional)
-LANGCHAIN_TRACING_V2=false
-LANGCHAIN_API_KEY=lsv2_pt_tu-langchain-key-aqui
-LANGCHAIN_PROJECT="Mini-CELIA-JN-Prototype"
-
-# Configuración Groq (opcional)
-GROQ_API_KEY=gsk_tu-groq-key-aqui
-
-# Configuración MongoDB (para persistencia)
-MONGO_URI=mongodb+srv://usuario:password@cluster.mongodb.net/
-```
-
-### 📱 **URLs del Sistema**
-- 🌐 **Aplicación Principal**: http://localhost:5173
-- 🔧 **API Documentation**: http://localhost:8000/docs
-- 📊 **Health Check**: http://localhost:8000/health
-
 ---
+
+
+
+
+
+
 
 ## ✨ **Características Principales**
 
@@ -619,31 +572,7 @@ MONGO_URI=mongodb+srv://usuario:password@cluster.mongodb.net/
 
 ---
 
-## 🏗️ **Arquitectura del Sistema**
-
-### 🔧 **Stack Tecnológico**
-
-#### **Frontend** (Interfaz de Usuario)
-```
-React 18 + Vite + Tailwind CSS
-├── Componentes Modulares
-├── Hooks Personalizados  
-├── Estados Globales con Context
-├── Diseño Mobile-First
-└── Iconos SVG Profesionales
-```
-
-#### **Backend** (API + IA)
-```
-FastAPI + Python 3.11+
-├── OpenAI GPT-4 Integration
-├── MongoDB Database
-├── LangChain Framework
-├── Async/Await Architecture
-└── RESTful API Design
-```
-
-### 📂 **Estructura del Proyecto**
+## 📂 **Estructura del Proyecto**
 ```
 ADD4U/
 ├── 📁 backend/                          # 🔧 API FastAPI + IA
@@ -822,17 +751,28 @@ También puedes escribir directamente en el chat:
 Este proyecto ha sido desarrollado como **Proof of Concept (PoC)** para demostrar las capacidades de IA aplicadas al sector público español.
 
 ### 🔧 **Para Desarrolladores**
-```powershell
-# Clonar repositorio
+
+**Configuración inicial:**
+```bash
+# Fork y clonar repositorio
 git clone [repository-url]
 cd ADD4U
 
-# Instalar todo (requiere Node.js + Python)
-npm run install:all
-
-# Desarrollo con hot-reload
-npm run dev:all
+# Crear branch para tu feature
+git checkout -b feature/nueva-funcionalidad
 ```
+
+**Desarrollo:**
+- Seguir **PEP 8** para Python
+- Usar **ESLint** para JavaScript
+- Documentar funciones nuevas
+- Incluir tests unitarios
+- Actualizar README si es necesario
+
+**Enviar cambios:**
+1. **Commit** tus cambios: `git commit -am 'Add nueva funcionalidad'`
+2. **Push** al branch: `git push origin feature/nueva-funcionalidad`
+3. **Crear Pull Request**
 
 ### 🐛 **Reportar Problemas**
 Si encuentras algún problema o tienes sugerencias:
@@ -843,12 +783,29 @@ Si encuentras algún problema o tienes sugerencias:
 
 ---
 
-## 📞 **Soporte y Contacto**
+## 📞 **Soporte y Documentación**
 
-### 🆘 **Resolución de Problemas Comunes**
+### **Enlaces Útiles:**
+- 📖 **Documentación API:** `http://localhost:8000/docs`
+- 🐛 **Reportar Bugs:** [GitHub Issues]
+- 💬 **Discusiones:** [GitHub Discussions]
 
-#### ❌ **"El backend no se conecta"**
-```powershell
+### **FAQ (Preguntas Frecuentes):**
+
+**❓ ¿Funciona sin internet?**
+✅ Sí, tiene modo offline con contenido mock
+
+**❓ ¿Es gratuito?**
+✅ El software es open-source. Solo pagas las APIs de IA que uses
+
+**❓ ¿Cumple la normativa española?**
+✅ Sí, está diseñado específicamente para LCSP española
+
+**❓ ¿Puedo personalizarlo para mi organización?**
+✅ Completamente personalizable y open-source
+
+**❓ ¿El backend no se conecta?**
+```bash
 # Verificar Python instalado
 python --version
 
@@ -856,8 +813,8 @@ python --version
 netstat -an | findstr 8000
 ```
 
-#### ❌ **"El frontend no carga"**
-```powershell
+**❓ ¿El frontend no carga?**
+```bash
 # Verificar Node.js instalado
 node --version
 
@@ -866,17 +823,17 @@ npm cache clean --force
 npm install
 ```
 
-#### ❌ **"OpenAI no responde"**
+**❓ ¿OpenAI no responde?**
 - 🔑 Verificar API Key en archivo `.env`
 - 💳 Comprobar créditos disponibles en OpenAI
 - 🌐 Verificar conexión a internet
 
-### 📧 **Contacto Técnico**
+### 📧 **Contacto**
 Para consultas técnicas avanzadas o implementaciones empresariales, contacta con el equipo de desarrollo.
 
 ---
 
-## 📄 **Licencia y Términos**
+## 📄 **Licencia y Créditos**
 
 ### ⚖️ **Licencia MIT**
 Este proyecto está bajo licencia MIT, lo que permite:
@@ -884,6 +841,13 @@ Este proyecto está bajo licencia MIT, lo que permite:
 - ✅ Modificación y distribución
 - ✅ Uso en proyectos privados
 - ❌ No incluye garantías
+
+### 🙏 **Créditos**
+- **OpenAI GPT-4** para generación de contenido
+- **Groq** para modelos open-source
+- **FastAPI** por el excelente framework
+- **React** y **Vite** por la experiencia de desarrollo
+- **MongoDB** para la persistencia de datos
 
 ### 🏛️ **Uso en Administración Pública**
 Mini-CELIA está diseñado específicamente para:
