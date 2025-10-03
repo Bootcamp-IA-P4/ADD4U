@@ -10,6 +10,25 @@ from backend.agents.jn_agent import generate_justificacion_necesidad
 from backend.database.outputs_repository import save_output
 from backend.utils.dict_utils import to_dict_safe
 
+# Importaciones para RAG
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_mongodb import MongoDBAtlasVectorSearch
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# Config embeddings (HuggingFace, gratis, local)
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+# VectorStore conectado a Mongo Atlas
+vectorstore = MongoDBAtlasVectorSearch.from_connection_string(
+    connection_string=os.getenv("MONGO_URI"),
+    namespace="Golden.embeddings",   # DB=Golden, collection=embeddings
+    embedding=embeddings,
+    index_name="default"             # nombre de tu índice vectorial en Atlas
+)
+
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
 # Modelo de entrada para la API
