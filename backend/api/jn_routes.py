@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict
 from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
+from backend.database.outputs_repository import save_output
+from backend.utils.dict_utils import to_dict_safe
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
@@ -17,11 +18,13 @@ class GenerateJNRequest(BaseModel):
 async def justificacion_de_la_necesidad(ctx: UserRequest):
     return await build_jn_output(ctx.dict())
 
+
 @router.post("/generar_jn")
 async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
     """
-    Genera la Justificación de la Necesidad (JN) en formato estructurado y narrativo.
-    Permite seleccionar el LLM a utilizar para cada etapa.
+    Genera la Justificación de la Necesidad (JN).
+    Guarda siempre el resultado en la colección outputs,
+    aunque no venga separado en json_a / json_b todavía.
     """
     if request.structured_llm_choice not in ["openai", "groq"]:
         raise HTTPException(status_code=400, detail="structured_llm_choice debe ser 'openai' o 'groq'")
@@ -34,6 +37,43 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
             structured_llm_choice=request.structured_llm_choice,
             narrative_llm_choice=request.narrative_llm_choice,
         )
+
+        expediente_id = request.user_input.expediente_id
+        documento = "JN"
+
+        # --- Guardado flexible ---
+        if "json_a" in jn_output:
+            json_a_dict = to_dict_safe(jn_output["json_a"])
+            await save_output(
+                expediente_id,
+                documento,
+                json_a_dict.get("seccion", request.user_input.seccion),
+                "A",
+                json_a_dict
+            )
+
+        if "json_b" in jn_output:
+            json_b_dict = to_dict_safe(jn_output["json_b"])
+            await save_output(
+                expediente_id,
+                documento,
+                json_b_dict.get("seccion", request.user_input.seccion),
+                "B",
+                json_b_dict
+            )
+
+        # fallback → si no está dividido
+        if "json_a" not in jn_output and "json_b" not in jn_output:
+            jn_output_dict = to_dict_safe(jn_output)
+            await save_output(
+                expediente_id,
+                documento,
+                request.user_input.seccion,
+                "B",
+                jn_output_dict
+            )
+
         return jn_output
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
