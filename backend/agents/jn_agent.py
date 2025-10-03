@@ -24,8 +24,8 @@ load_dotenv()
 
 async def generate_justificacion_necesidad(
     user_input: UserRequest,
-    structured_llm_choice: str = "openai", # Añadimos el selector para el LLM estructurado
-    narrative_llm_choice: str = "groq", # Añadimos el selector para el LLM narrativo
+    structured_llm_choice: str = "groq", # Añadimos el selector para el LLM estructurado
+    narrative_llm_choice: str = "openai", # Añadimos el selector para el LLM narrativo
 ) -> JustificacionNecesidadStructured:
     """
     Genera la Justificación de la Necesidad usando LLMs seleccionados por el usuario.
