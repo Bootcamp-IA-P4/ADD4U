@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from backend.database.mongo import get_collection
+from backend.database.outputs_repository import save_output
+from datetime import datetime
 
 router = APIRouter(prefix="/outputs", tags=["outputs"])
 
@@ -84,20 +86,17 @@ async def get_assembled_jn(expediente_id: str):
     try:
         collection = get_collection("outputs")
 
-        # Buscamos todas las narrativas (nodo B) del expediente
         cursor = collection.find(
             {"expediente_id": expediente_id, "documento": "JN", "nodo": "B"},
             {"_id": 0}
         ).sort("timestamp", -1)
 
-        # Guardamos solo la última versión por sección
         latest_by_section = {}
         async for doc in cursor:
             seccion = doc.get("seccion")
-            if seccion not in latest_by_section:  # solo la última
+            if seccion not in latest_by_section:
                 latest_by_section[seccion] = doc.get("narrativa")
 
-        # Ordenamos secciones al estilo JN.1, JN.2...
         assembled_sections = [
             {"seccion": s, "narrativa": latest_by_section[s]}
             for s in sorted(latest_by_section.keys())
@@ -111,3 +110,43 @@ async def get_assembled_jn(expediente_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error ensamblando JN: {str(e)}")
+
+
+@router.get("/{expediente_id}/jn/validated")
+async def get_validated_jn(expediente_id: str):
+    """
+    Devuelve el documento JN ensamblado y validado por un agente global.
+    Por ahora es un stub: se limita a devolver el ensamblado y lo guarda como nodo VALIDATED.
+    En el futuro, aquí se integrará el agente revisor (coherencia, estilo, normativa).
+    """
+    try:
+        # 1. Recuperar ensamblado
+        assembled = await get_assembled_jn(expediente_id)
+        text = "\n\n".join([s["narrativa"] for s in assembled["assembled"]])
+
+        # 2. Aquí en el futuro: llamar al agente validador global
+        validated_text = f"[VALIDATED STUB] {text}"
+
+        # 3. Guardar como nodo VALIDATED
+        await save_output(
+            expediente_id,
+            "JN",
+            "VALIDATED",  # usamos esta pseudo-sección para identificar
+            "VALIDATED",  # nodo especial
+            {
+                "narrativa": validated_text,
+                "version": 1,
+                "estado": "validado",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+
+        return {
+            "expediente_id": expediente_id,
+            "documento": "JN",
+            "nodo": "VALIDATED",
+            "narrativa": validated_text
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error validando JN: {str(e)}")
