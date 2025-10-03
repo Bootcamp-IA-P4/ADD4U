@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
-from backend.database.outputs_repository import save_output  # ✅ import único
+from backend.database.outputs_repository import save_output
 from backend.utils.dict_utils import to_dict_safe
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
