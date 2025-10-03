@@ -4,28 +4,11 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Any, Optional, Dict
 from backend.models.schemas_jn import UserRequest, OutputJsonA, OutputJsonB, OutputJsonBRefs
+from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
 from backend.agents.jn_agent import generate_justificacion_necesidad
-from backend.database.mongo import get_collection
-
-# Importaciones para RAG
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_mongodb import MongoDBAtlasVectorSearch
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-# Config embeddings (HuggingFace, gratis, local)
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
-# VectorStore conectado a Mongo Atlas
-vectorstore = MongoDBAtlasVectorSearch.from_connection_string(
-    connection_string=os.getenv("MONGO_URI"),
-    namespace="Golden.embeddings",   # DB=Golden, collection=embeddings
-    embedding=embeddings,
-    index_name="default"             # nombre de tu índice vectorial en Atlas
-)
+from backend.database.outputs_repository import save_output
+from backend.utils.dict_utils import to_dict_safe
 
 router = APIRouter(prefix="/justificacion", tags=["justificacion"])
 
@@ -40,11 +23,15 @@ class GenerateJNRequest(BaseModel):
 async def justificacion_de_la_necesidad(ctx: UserRequest):
     return await build_jn_output(ctx.dict())
 
+
 @router.post("/generar_jn")
 async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
     """
     Genera la Justificación de la Necesidad (JN) en formato estructurado y narrativo.
     Permite seleccionar el LLM a utilizar para cada etapa y opcionalmente usar RAG.
+    Genera la Justificación de la Necesidad (JN).
+    Guarda siempre el resultado en la colección outputs,
+    aunque no venga separado en json_a / json_b todavía.
     """
     if request.structured_llm_choice not in ["openai", "groq"]:
         raise HTTPException(status_code=400, detail="structured_llm_choice debe ser 'openai' o 'groq'")
@@ -63,43 +50,44 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
             user_input=request.user_input,
             structured_llm_choice=request.structured_llm_choice,
             narrative_llm_choice=request.narrative_llm_choice,
+        )
+
+        expediente_id = request.user_input.expediente_id
+        documento = "JN"
+
+        # --- Guardado flexible ---
+        if "json_a" in jn_output:
+            json_a_dict = to_dict_safe(jn_output["json_a"])
+            await save_output(
+                expediente_id,
+                documento,
+                json_a_dict.get("seccion", request.user_input.seccion),
+                "A",
+                json_a_dict
             )
-         # Generar timestamp y hash
-        current_timestamp = datetime.now().isoformat(timespec='seconds') + 'Z'
-        hash_a = hashlib.sha256(jn_output.model_dump_json().encode('utf-8')).hexdigest()
-        hash_b = hashlib.sha256(jn_output.narrativa.encode('utf-8')).hexdigest()
 
-        # Crear OutputJsonA
-        output_a = OutputJsonA(
-            expediente_id=request.user_input.expediente_id,
-            seccion=request.user_input.seccion,
-            timestamp=current_timestamp,
-            secciones_JN=jn_output.objeto_alcance,
-            hash=hash_a
-        )
+        if "json_b" in jn_output:
+            json_b_dict = to_dict_safe(jn_output["json_b"])
+            await save_output(
+                expediente_id,
+                documento,
+                json_b_dict.get("seccion", request.user_input.seccion),
+                "B",
+                json_b_dict
+            )
 
-        # Crear OutputJsonB
-        output_b_refs = OutputJsonBRefs(
-            hash_json_A=hash_a,
-            citas_golden=[], # Aquí puedes añadir lógica para citas golden si las tienes
-            citas_normativas=[] # Aquí puedes añadir lógica para citas normativas si las tienes
-        )
-        output_b = OutputJsonB(
-            expediente_id=request.user_input.expediente_id,
-            seccion=request.user_input.seccion,
-            timestamp=current_timestamp,
-            narrativa=jn_output.narrativa,
-            refs=output_b_refs,
-            hash=hash_b
-        )
+        # fallback → si no está dividido
+        if "json_a" not in jn_output and "json_b" not in jn_output:
+            jn_output_dict = to_dict_safe(jn_output)
+            await save_output(
+                expediente_id,
+                documento,
+                request.user_input.seccion,
+                "B",
+                jn_output_dict
+            )
 
-        # Guardar en la base de datos
-        collection_a = get_collection("outputs_jsonA_collection")
-        collection_b = get_collection("outputs_jsonB_collection")
+        return jn_output
 
-        await collection_a.insert_one(output_a.model_dump())
-        await collection_b.insert_one(output_b.model_dump())
-
-        return {"output_jsonA": output_a.model_dump(), "output_jsonB": output_b.model_dump()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
