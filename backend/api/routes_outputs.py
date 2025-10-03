@@ -73,12 +73,13 @@ async def get_latest_outputs(expediente_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error recuperando últimas narrativas: {str(e)}")
 
-@router.get("/{expediente_id}/jn/final")
-async def get_final_jn(expediente_id: str):
+
+@router.get("/{expediente_id}/jn/assembled")
+async def get_assembled_jn(expediente_id: str):
     """
     Devuelve el documento JN ensamblado a partir de las últimas narrativas (nodo B)
-    de cada sección (JN.1, JN.2, ...). Es un documento vivo: devuelve tantas secciones
-    como haya ya generadas para el expediente.
+    de cada sección (JN.1, JN.2, ...). Es un documento vivo y se actualiza a medida
+    que se van generando nuevas secciones.
     """
     try:
         collection = get_collection("outputs")
@@ -97,7 +98,7 @@ async def get_final_jn(expediente_id: str):
                 latest_by_section[seccion] = doc.get("narrativa")
 
         # Ordenamos secciones al estilo JN.1, JN.2...
-        final_sections = [
+        assembled_sections = [
             {"seccion": s, "narrativa": latest_by_section[s]}
             for s in sorted(latest_by_section.keys())
         ]
@@ -105,8 +106,8 @@ async def get_final_jn(expediente_id: str):
         return {
             "expediente_id": expediente_id,
             "documento": "JN",
-            "final": final_sections
+            "assembled": assembled_sections
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error ensamblando JN final: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error ensamblando JN: {str(e)}")
