@@ -5,7 +5,6 @@ Orquestador principal de Mini-CELIA
 Versión actual: funcional con agentes stub (usa .ainvoke)
 Versión futura: integración nativa con LangGraph (.as_node)
 
-Responsable: Dev1 (Arquitectura)
 """
 
 from langgraph.graph import StateGraph, END
