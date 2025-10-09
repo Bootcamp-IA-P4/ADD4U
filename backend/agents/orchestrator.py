@@ -3,7 +3,7 @@ Orquestador principal de Mini-CELIA
 Versión actual: funcional con agentes stub (usa .ainvoke)
 """
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, START, END
 from typing import TypedDict
 from backend.agents.retriever_agent import RetrieverAgent
 from backend.agents.prompt_manager import PromptManager
@@ -53,6 +53,7 @@ def build_orchestrator():
     graph.add_node("validator_b", validator_b.ainvoke)
 
     # Conexiones del flujo
+    graph.add_edge(START, "retriever")
     graph.add_edge("retriever", "prompt_manager")
     graph.add_edge("prompt_manager", "generator_a")
     graph.add_edge("generator_a", "validator_a")
@@ -60,7 +61,6 @@ def build_orchestrator():
     graph.add_edge("generator_b", "validator_b")
     graph.add_edge("validator_b", END)
 
-    graph.add_edge("START", "retriever")
 
     # Compilar el grafo
     return graph.compile()
