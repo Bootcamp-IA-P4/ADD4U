@@ -34,7 +34,7 @@ def build_orchestrator():
     Construye el grafo LangGraph que conecta los agentes.
     Versión de desarrollo: usa .ainvoke para compatibilidad con stubs.
     """
-    graph = StateGraph(OrchestratorState)  # 👈 Añadimos el esquema obligatorio
+    graph = StateGraph(OrchestratorState) 
 
     # Instancias de agentes
     retriever = RetrieverAgent()
@@ -59,6 +59,8 @@ def build_orchestrator():
     graph.add_edge("validator_a", "generator_b")
     graph.add_edge("generator_b", "validator_b")
     graph.add_edge("validator_b", END)
+
+    graph.add_edge("START", "retriever")
 
     # Compilar el grafo
     return graph.compile()
