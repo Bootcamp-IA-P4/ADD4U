@@ -1,4 +1,3 @@
-# backend/agents/generators/generator_a.py
 """
 Generator A
 -----------
