@@ -7,7 +7,9 @@ async def create_indexes():
     # Índices básicos para trazabilidad e integridad
     await collection.create_index("id", unique=True)       
     await collection.create_index("hash", unique=True)     
-    await collection.create_index("titulo")                
+    await collection.create_index("titulo")   
+    await collection.create_index("version_de")
+    await collection.create_index("fecha_insercion")             
 
     print("✅ Índices creados para normativa_global.")
 
