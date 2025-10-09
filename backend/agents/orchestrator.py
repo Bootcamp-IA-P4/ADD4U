@@ -1,13 +1,10 @@
-# backend/agents/orchestrator.py
 """
 Orquestador principal de Mini-CELIA
------------------------------------
 Versión actual: funcional con agentes stub (usa .ainvoke)
-Versión futura: integración nativa con LangGraph (.as_node)
-
 """
 
 from langgraph.graph import StateGraph, END
+from typing import TypedDict
 from backend.agents.retriever_agent import RetrieverAgent
 from backend.agents.prompt_manager import PromptManager
 from backend.agents.validator_agent import ValidatorAgent
@@ -15,15 +12,29 @@ from backend.agents.generators.generator_a import GeneratorA
 from backend.agents.generators.generator_b import GeneratorB
 
 # ============================================================
-# 🧱 VERSIÓN ACTUAL – en desarrollo
+# 🔹 1. Definición del esquema de estado
 # ============================================================
+class OrchestratorState(TypedDict, total=False):
+    expediente_id: str
+    documento: str
+    seccion: str
+    user_text: str
+    context: str
+    prompt_a: str
+    prompt_b: str
+    json_a: dict
+    json_b: dict
+    validation_result: str
 
+# ============================================================
+# 🔹 2. Grafo funcional con agentes stub y generadores reales
+# ============================================================
 def build_orchestrator():
     """
-    Construye el grafo LangGraph usando agentes stub (con .ainvoke)
-    para permitir pruebas y desarrollo progresivo.
+    Construye el grafo LangGraph que conecta los agentes.
+    Versión de desarrollo: usa .ainvoke para compatibilidad con stubs.
     """
-    graph = StateGraph()
+    graph = StateGraph(OrchestratorState)  # 👈 Añadimos el esquema obligatorio
 
     # Instancias de agentes
     retriever = RetrieverAgent()
@@ -33,7 +44,7 @@ def build_orchestrator():
     generator_b = GeneratorB()
     validator_b = ValidatorAgent(mode="narrativa")
 
-    # Añadir nodos al grafo usando el método asíncrono .ainvoke
+    # Añadir nodos
     graph.add_node("retriever", retriever.ainvoke)
     graph.add_node("prompt_manager", prompt_manager.ainvoke)
     graph.add_node("generator_a", generator_a.ainvoke)
@@ -41,7 +52,7 @@ def build_orchestrator():
     graph.add_node("generator_b", generator_b.ainvoke)
     graph.add_node("validator_b", validator_b.ainvoke)
 
-    # Conexiones entre nodos (flujo lógico)
+    # Conexiones del flujo
     graph.add_edge("retriever", "prompt_manager")
     graph.add_edge("prompt_manager", "generator_a")
     graph.add_edge("generator_a", "validator_a")
@@ -49,8 +60,9 @@ def build_orchestrator():
     graph.add_edge("generator_b", "validator_b")
     graph.add_edge("validator_b", END)
 
-    # Compilar grafo
+    # Compilar el grafo
     return graph.compile()
+
 
 
 # ============================================================
