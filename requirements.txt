@@ -16,3 +16,4 @@ pypdf
 tiktoken
 sentence-transformers
 langchain-huggingface
+langgraph
