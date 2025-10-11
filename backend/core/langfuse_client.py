@@ -8,6 +8,9 @@ Cada nodo del grafo podrá usar el decorador @observe() para registrar sus traza
 from langfuse import Langfuse
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Inicializa cliente global
 langfuse = Langfuse(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
