@@ -24,7 +24,7 @@ class GeneratorB:
             temperature=0.4
         )
 
-    @observe()  # 🔹 registra ejecución en LangFuse
+    @observe()  # registra ejecución en LangFuse
     async def ainvoke(self, inputs: dict):
         """
         inputs esperados:
@@ -53,7 +53,7 @@ class GeneratorB:
             response = await self.llm.ainvoke(full_prompt)
             narrative = response.content
 
-            # === 🔹 Evaluación básica con TruLens local ===
+            # === Evaluación básica con TruLens local ===
             metrics = {
                 "coherencia": 0.9,  # placeholder (más adelante se calculará real)
                 "completitud": 0.85,
