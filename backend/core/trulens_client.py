@@ -1,20 +1,20 @@
 """
-TruLens Client (v2.4.1 compatible)
-----------------------------------
-Configuración local de TruLens para evaluar calidad de generación.
-Utiliza FeedbackDefinition y Record del nuevo modelo.
+TruLens Client (estructura moderna)
+-----------------------------------
+Compatible con trulens-core >= 2.4
+Registra métricas de evaluación en SQLite local.
 """
 
 import os
 from trulens.core import TruSession
-from trulens.feedback.definition import FeedbackDefinition
+from trulens.core.schema.feedback import FeedbackDefinition
 from trulens.core.record import Record
 
-# === Configuración de la base de datos ===
+# Ruta de la base de datos local
 TRULENS_DB_PATH = os.getenv("TRULENS_DB_PATH", "backend/trulens_data/trulens.db")
 session = TruSession(database_url=f"sqlite:///{TRULENS_DB_PATH}")
 
-# === Definición del esquema de feedback ===
+# Definición del tipo de feedback
 feedback_def = FeedbackDefinition(
     name="evaluacion_narrativa",
     description="Evaluación local de coherencia, completitud y tono."
@@ -22,7 +22,7 @@ feedback_def = FeedbackDefinition(
 
 def register_eval(app_name: str, result: dict, metrics: dict):
     """
-    Registra métricas locales en TruLens 2.4+ mediante Record.
+    Registra métricas locales en la base de datos de TruLens.
     """
     try:
         record = Record(
@@ -34,7 +34,6 @@ def register_eval(app_name: str, result: dict, metrics: dict):
 
         session.add_record(record)
         session.commit()
-
         print(f"✅ Métricas registradas correctamente en TruLens para {app_name}")
 
     except Exception as e:
