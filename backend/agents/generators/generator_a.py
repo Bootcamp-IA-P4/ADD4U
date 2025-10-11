@@ -9,7 +9,6 @@ import os
 import datetime
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from backend.core.langfuse_client import observe
 
 load_dotenv()
 
@@ -22,7 +21,6 @@ class GeneratorA:
             temperature=0.2
         )
 
-    @observe()  # registra ejecución en LangFuse
     async def ainvoke(self, inputs: dict):
         """
         inputs esperados:

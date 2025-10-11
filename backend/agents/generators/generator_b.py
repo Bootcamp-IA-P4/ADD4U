@@ -2,15 +2,12 @@
 Generator B (instrumentado)
 ----------------------------
 Genera la narrativa final (JSON_B) a partir del contenido estructurado (JSON_A).
-Integra trazabilidad con LangFuse y evaluación local con TruLens.
+Integra evaluación local con TruLens.
 """
 
 import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-
-# Importamos observabilidad y evaluación
-from backend.core.langfuse_client import observe
 from backend.core.trulens_client import register_eval
 
 load_dotenv()
@@ -24,7 +21,6 @@ class GeneratorB:
             temperature=0.4
         )
 
-    @observe()  # registra ejecución en LangFuse
     async def ainvoke(self, inputs: dict):
         """
         inputs esperados:
