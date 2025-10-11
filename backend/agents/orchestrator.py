@@ -33,27 +33,37 @@ class OrchestratorState(TypedDict, total=False):
 # ============================================================
 #   2. Funciones observables (LangFuse)
 # ============================================================
-@observe()
 async def retriever_node(state: OrchestratorState):
-    agent = RetrieverAgent()
-    result = await agent.ainvoke(state)
+    @observe()
+    async def run_retriever():
+        agent = RetrieverAgent()
+        return await agent.ainvoke(state)
+
+    result = await run_retriever()
     state.update(result)
     return state
 
 
-@observe()
 async def prompt_manager_node(state: OrchestratorState):
-    agent = PromptManager()
-    result = await agent.ainvoke(state)
+    @observe()
+    async def run_prompt_manager():
+        agent = PromptManager()
+        return await agent.ainvoke(state)
+
+    result = await run_prompt_manager()
     state.update(result)
     return state
 
 
-@observe()
 async def generator_a_node(state: OrchestratorState):
-    agent = GeneratorA()
-    result = await agent.ainvoke(state)
+    @observe()
+    async def run_generator_a():
+        agent = GeneratorA()
+        return await agent.ainvoke(state)
+
+    result = await run_generator_a()
     state.update(result)
+
     # Guardar JSON_A en Mongo
     if "json_a" in result:
         await save_output(
@@ -66,19 +76,26 @@ async def generator_a_node(state: OrchestratorState):
     return state
 
 
-@observe()
 async def validator_a_node(state: OrchestratorState):
-    agent = ValidatorAgent(mode="estructurado")
-    result = await agent.ainvoke(state)
+    @observe()
+    async def run_validator_a():
+        agent = ValidatorAgent(mode="estructurado")
+        return await agent.ainvoke(state)
+
+    result = await run_validator_a()
     state.update(result)
     return state
 
 
-@observe()
 async def generator_b_node(state: OrchestratorState):
-    agent = GeneratorB()
-    result = await agent.ainvoke(state)
+    @observe()
+    async def run_generator_b():
+        agent = GeneratorB()
+        return await agent.ainvoke(state)
+
+    result = await run_generator_b()
     state.update(result)
+
     # Guardar JSON_B + métricas en Mongo
     if "json_b" in result:
         await save_output(
@@ -91,10 +108,13 @@ async def generator_b_node(state: OrchestratorState):
     return state
 
 
-@observe()
 async def validator_b_node(state: OrchestratorState):
-    agent = ValidatorAgent(mode="narrativa")
-    result = await agent.ainvoke(state)
+    @observe()
+    async def run_validator_b():
+        agent = ValidatorAgent(mode="narrativa")
+        return await agent.ainvoke(state)
+
+    result = await run_validator_b()
     state.update(result)
     return state
 
@@ -121,8 +141,6 @@ def build_orchestrator():
     graph.add_edge("validator_b", END)
 
     return graph.compile()
-
-
 
 
 # ============================================================
@@ -157,9 +175,9 @@ def build_orchestrator():
 # ============================================================
 # 🔍 Notas
 # ============================================================
-# - La versión actual (.ainvoke) permite probar el grafo aunque los agentes
-#   no estén implementados todavía.
-# - La versión futura (.as_node) se activará cuando todos los agentes
-#   sean compatibles con LangGraph o LangChain.
-# - El orden de los nodos refleja el flujo JN.x:
-#   Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
+# - Ahora los nodos usan @observe() internamente (compatibles con LangGraph).
+# - Cada ejecución se registra en LangFuse sin romper la asincronía.
+# - La estructura general del flujo se mantiene idéntica.
+# - La versión futura (.as_node) podrá activarse cuando los agentes
+#   sean nativos de LangGraph o LangChain.
+# - Orden del flujo: Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
