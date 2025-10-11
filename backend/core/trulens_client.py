@@ -11,7 +11,7 @@ from trulens_eval.tru_custom_app import instrument
 from trulens_eval.feedback import Feedback
 
 # Inicializa base local (SQLite por defecto)
-TRULENS_DB_PATH = os.getenv("TRULENS_DB_PATH", "./trulens_data/trulens.db")
+TRULENS_DB_PATH = os.getenv("TRULENS_DB_PATH", "backend/trulens_data/trulens.db")
 tru = Tru(database_url=f"sqlite:///{TRULENS_DB_PATH}")
 
 # Feedback genérico (ejemplo básico)
