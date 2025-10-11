@@ -1,7 +1,7 @@
 """
 Orchestrator (instrumentado)
 ----------------------------
-Flujo LangGraph completo con trazabilidad LangFuse y persistencia Mongo.
+Flujo LangGraph completo con trazabilidad LangFuse (contextual) y persistencia Mongo.
 """
 
 from langgraph.graph import StateGraph, START, END
@@ -12,7 +12,7 @@ from backend.agents.generators.generator_a import GeneratorA
 from backend.agents.generators.generator_b import GeneratorB
 from backend.agents.validator_agent import ValidatorAgent
 from backend.database.outputs_repository import save_output
-from backend.core.langfuse_client import observe
+from backend.core.langfuse_client import langfuse
 
 
 # ============================================================
@@ -35,89 +35,71 @@ class OrchestratorState(TypedDict, total=False):
 #   2. Funciones observables (LangFuse)
 # ============================================================
 async def retriever_node(state: OrchestratorState):
-    async def run_retriever():
+    with langfuse.start_as_current_span(name="retriever_node"):
         agent = RetrieverAgent()
-        return await agent.ainvoke(state)
-
-    observed_retriever = observe()(run_retriever)
-    result = await observed_retriever()
-    state.update(result)
-    return state
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
 
 
 async def prompt_manager_node(state: OrchestratorState):
-    async def run_prompt_manager():
+    with langfuse.start_as_current_span(name="prompt_manager_node"):
         agent = PromptManager()
-        return await agent.ainvoke(state)
-
-    observed_pm = observe()(run_prompt_manager)
-    result = await observed_pm()
-    state.update(result)
-    return state
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
 
 
 async def generator_a_node(state: OrchestratorState):
-    async def run_generator_a():
+    with langfuse.start_as_current_span(name="generator_a_node"):
         agent = GeneratorA()
-        return await agent.ainvoke(state)
+        result = await agent.ainvoke(state)
+        state.update(result)
 
-    observed_gen_a = observe()(run_generator_a)
-    result = await observed_gen_a()
-    state.update(result)
-
-    # Guardar JSON_A en Mongo
-    if "json_a" in result:
-        await save_output(
-            state["expediente_id"],
-            state["documento"],
-            state["seccion"],
-            "A",
-            result["json_a"],
-        )
-    return state
+        # Guardar JSON_A en Mongo
+        if "json_a" in result:
+            await save_output(
+                state["expediente_id"],
+                state["documento"],
+                state["seccion"],
+                "A",
+                result["json_a"],
+            )
+        return state
 
 
 async def validator_a_node(state: OrchestratorState):
-    async def run_validator_a():
+    with langfuse.start_as_current_span(name="validator_a_node"):
         agent = ValidatorAgent(mode="estructurado")
-        return await agent.ainvoke(state)
-
-    observed_val_a = observe()(run_validator_a)
-    result = await observed_val_a()
-    state.update(result)
-    return state
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
 
 
 async def generator_b_node(state: OrchestratorState):
-    async def run_generator_b():
+    with langfuse.start_as_current_span(name="generator_b_node"):
         agent = GeneratorB()
-        return await agent.ainvoke(state)
+        result = await agent.ainvoke(state)
+        state.update(result)
 
-    observed_gen_b = observe()(run_generator_b)
-    result = await observed_gen_b()
-    state.update(result)
-
-    # Guardar JSON_B + métricas en Mongo
-    if "json_b" in result:
-        await save_output(
-            state["expediente_id"],
-            state["documento"],
-            state["seccion"],
-            "B",
-            result["json_b"],
-        )
-    return state
+        # Guardar JSON_B + métricas en Mongo
+        if "json_b" in result:
+            await save_output(
+                state["expediente_id"],
+                state["documento"],
+                state["seccion"],
+                "B",
+                result["json_b"],
+            )
+        return state
 
 
 async def validator_b_node(state: OrchestratorState):
-    async def run_validator_b():
+    with langfuse.start_as_current_span(name="validator_b_node"):
         agent = ValidatorAgent(mode="narrativa")
-        return await agent.ainvoke(state)
-
-    observed_val_b = observe()(run_validator_b)
-    result = await observed_val_b()
-    state.update(result)
-    return state
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
 
 
 # ============================================================
@@ -177,8 +159,9 @@ def build_orchestrator():
 # ============================================================
 # 🔍 Notas
 # ============================================================
-# - Ahora los nodos usan observe()(func) de manera compatible con LangGraph.
-# - Cada ejecución se registra correctamente en LangFuse sin romper la asincronía.
-# - El flujo se mantiene idéntico: Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
-# - La versión futura (.as_node) permitirá sustituir .ainvoke() cuando todos los agentes sean nativos LangGraph.
-# - Mantener este archivo como referencia para la migración definitiva.
+# - LangFuse ahora usa context managers (`with langfuse.start_as_current_span`)
+#   para registrar cada nodo sin romper la asincronía.
+# - Cada ejecución se traza correctamente en LangFuse Cloud.
+# - El flujo LangGraph se mantiene idéntico.
+# - La versión futura (.as_node) se usará cuando todos los agentes sean nativos.
+# - Orden del flujo: Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
