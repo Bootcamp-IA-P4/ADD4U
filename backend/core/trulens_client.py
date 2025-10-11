@@ -1,30 +1,36 @@
 """
-TruLens Client
----------------
+TruLens Client (v2.4+ compatible)
+---------------------------------
 Configuración local de TruLens para evaluar calidad de generación.
 Se usará en GeneratorB para medir coherencia y completitud narrativa.
 """
 
 import os
-from trulens_eval import Tru
-from trulens_eval.tru_custom_app import instrument
-from trulens_eval.feedback import Feedback
+from trulens.core import TruSession
+from trulens.feedback import Feedback
 
-# Inicializa base local (SQLite por defecto)
+# Ruta de la base local
 TRULENS_DB_PATH = os.getenv("TRULENS_DB_PATH", "backend/trulens_data/trulens.db")
-tru = Tru(database_url=f"sqlite:///{TRULENS_DB_PATH}")
 
-# Feedback genérico (ejemplo básico)
-feedback = Feedback()  # se ampliará más adelante con métricas semánticas
+# Crear la sesión con la base SQLite
+session = TruSession(database_url=f"sqlite:///{TRULENS_DB_PATH}")
+
+# Feedback genérico (plantilla básica)
+feedback = Feedback(name="calidad_local", description="Evaluación de calidad narrativa y coherencia")
 
 def register_eval(app_name: str, result: dict, metrics: dict):
     """
-    Guarda métricas básicas de evaluación local.
+    Registra un feedback de evaluación en la base local de TruLens.
+    Compatible con la nueva API (v2.4+).
     """
-    tru.record_feedback(
-        app_id=app_name,
-        record=metrics,
-        feedback_type="manual",
-        metadata=result
-    )
-    print(f"✅ Métricas registradas en TruLens local para {app_name}")
+    try:
+        session.add_feedback(
+            feedback=feedback,
+            app_name=app_name,
+            record=metrics,
+            metadata=result
+        )
+        session.commit()
+        print(f"✅ Métricas registradas en TruLens local para {app_name}")
+    except Exception as e:
+        print(f"⚠️ Error registrando métricas TruLens: {e}")
