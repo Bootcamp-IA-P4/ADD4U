@@ -14,6 +14,7 @@ from backend.agents.validator_agent import ValidatorAgent
 from backend.database.outputs_repository import save_output
 from backend.core.langfuse_client import observe
 
+
 # ============================================================
 #    1. Estado compartido del grafo
 # ============================================================
@@ -149,4 +150,35 @@ def build_orchestrator():
 """
 Cuando todos los agentes estén desarrollados con LangChain y LangGraph,
 podremos usar la siguiente versión, que crea nodos nativos mediante .as_node().
+
+def build_orchestrator():
+    graph = StateGraph()
+
+    retriever = RetrieverAgent().as_node("retriever")
+    prompt_manager = PromptManager().as_node("prompt_manager")
+    generator_a = GeneratorA().as_node("generator_a")
+    validator_a = ValidatorAgent("estructurado").as_node("validator_a")
+    generator_b = GeneratorB().as_node("generator_b")
+    validator_b = ValidatorAgent("narrativa").as_node("validator_b")
+    save_node = save_output.as_node("save_output")
+
+    graph.add_edge("retriever", "prompt_manager")
+    graph.add_edge("prompt_manager", "generator_a")
+    graph.add_edge("generator_a", "validator_a")
+    graph.add_edge("validator_a", "generator_b")
+    graph.add_edge("generator_b", "validator_b")
+    graph.add_edge("validator_b", "save_output")
+    graph.add_edge("save_output", END)
+
+    return graph.compile()
 """
+
+
+# ============================================================
+# 🔍 Notas
+# ============================================================
+# - Ahora los nodos usan observe()(func) de manera compatible con LangGraph.
+# - Cada ejecución se registra correctamente en LangFuse sin romper la asincronía.
+# - El flujo se mantiene idéntico: Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
+# - La versión futura (.as_node) permitirá sustituir .ainvoke() cuando todos los agentes sean nativos LangGraph.
+# - Mantener este archivo como referencia para la migración definitiva.
