@@ -9,6 +9,7 @@ import os
 import datetime
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from backend.core.trulens_client import register_eval
 
 load_dotenv()
 
@@ -72,6 +73,24 @@ class GeneratorA:
                     "status": "success"
                 }
             }
+
+            register_eval(
+                app_name=f"{documento}-{seccion}",
+                result={
+                    "expediente_id": expediente_id,
+                    "documento": documento,
+                    "seccion": seccion,
+                    "modo": "json_a",
+                    "model": self.llm.model_name,
+                },
+                metrics=None,
+                app_version="json_a",
+                prompt=prompt_text,
+                model_inputs={
+                    "user_text": user_text,
+                },
+                model_output=structured_output,
+            )
 
             return {"json_a": json_a}
 

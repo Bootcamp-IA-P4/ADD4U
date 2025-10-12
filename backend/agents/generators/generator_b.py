@@ -57,8 +57,23 @@ class GeneratorB:
             }
             register_eval(
                 app_name=f"{documento}-{seccion}",
-                result={"expediente_id": expediente_id, "section": seccion},
-                metrics=metrics
+                result={
+                    "expediente_id": expediente_id,
+                    "documento": documento,
+                    "seccion": seccion,
+                    "modo": "json_b",
+                    "model": self.llm.model_name,
+                },
+                metrics=metrics,
+                app_version="json_b",
+                prompt=prompt_b,
+                model_inputs={
+                    "json_a": structured_data,
+                    "user_text": inputs.get("user_text", ""),
+                },
+                model_output={
+                    "narrative_output": narrative,
+                },
             )
 
             return {
