@@ -149,3 +149,4 @@ app.log
 # -----------------------
 backend/trulens_data/
 *.db
+default.sqlite
