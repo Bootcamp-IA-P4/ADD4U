@@ -18,6 +18,5 @@ sentence-transformers
 langchain-huggingface
 langgraph
 langfuse
-trulens-core
-trulens-dashboard
-trulens-feedback
+trulens
+streamlit
