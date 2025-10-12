@@ -1,52 +1,167 @@
 """
-TruLens Client (final compatible con 2.4.1)
--------------------------------------------
-Crea y registra métricas locales de evaluación en SQLite.
-Garantiza que las apps se crean automáticamente.
+TruLens Client (versión ajustada según documentación de TruLens ≥ 2.x)
+------------------------------------------------------------------------
+Centraliza la inicialización de TruSession y el registro de ejecuciones
+mediante VirtualRecord para poder visualizar prompts y resultados en el
+dashboard.
 """
 
 import os
+import uuid
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+# TruLens activa OTEL tracing automáticamente si detecta dependencias.
+# Forzamos su desactivación para poder usar la ingesta manual (VirtualRecord).
+os.environ.setdefault("TRULENS_OTEL_TRACING", "0")
+
+import sqlalchemy as sa
+from sqlalchemy.orm import column_property
+from trulens.apps.virtual import TruVirtual, VirtualApp, VirtualRecord
 from trulens.core import TruSession
-from trulens.core.schema.feedback import FeedbackDefinition
-from trulens.core.schema.record import Record
-from trulens.core.app import App
+from trulens.core.experimental import Feature
 
-# === Configuración base ===
+
 TRULENS_DB_PATH = os.getenv("TRULENS_DB_PATH", "backend/trulens_data/trulens.db")
-session = TruSession(database_url=f"sqlite:///{TRULENS_DB_PATH}")
-
-# === Definición del tipo de feedback ===
-feedback_def = FeedbackDefinition(
-    name="evaluacion_narrativa",
-    description="Evaluación local de coherencia, completitud y tono."
+SCHEMA_SENTINEL = Path(f"{TRULENS_DB_PATH}.schema_v2_applied")
+session = TruSession(
+    database_url=f"sqlite:///{TRULENS_DB_PATH}",
+    experimental_feature_flags={Feature.OTEL_TRACING: False},
 )
+try:  # Mantener base al día con el último esquema TruLens
+    session.connector.migrate_database()
+except Exception as exc:  # pragma: no cover - migración defensiva
+    print(f"⚠️ No se pudo migrar la base de TruLens: {exc}")
 
-def register_eval(app_name: str, result: dict, metrics: dict):
-    """
-    Registra métricas locales en la base TruLens y crea la app si no existe.
-    """
+
+def _ensure_modern_schema() -> None:
+    """Detecta esquemas antiguos y resetea la base si faltan columnas críticas."""
+
     try:
-        # 🟢 1. Verificar si la app existe, si no, crearla
-        app = session.get_app(app_name)
-        if not app:
-            print(f"🆕 Creando nueva app en TruLens: {app_name}")
-            new_app = App(name=app_name, description="Mini-CELIA evaluation app")
-            session.add_app(new_app)
-            session.commit()
+        engine = session.connector.db.engine
+        inspector = sa.inspect(engine)
+        table_name = f"{session.connector.db.table_prefix}records"
+        columns = {col["name"] for col in inspector.get_columns(table_name)}
+        if "app_version" not in columns and not SCHEMA_SENTINEL.exists():
+            print(
+                "⚠️ Base TruLens sin columna app_version; se resetea para compatibilidad 2.x"
+            )
+            session.connector.reset_database()
+            SCHEMA_SENTINEL.touch()
+    except Exception as exc:  # pragma: no cover - diagnóstico defensivo
+        print(f"⚠️ No se pudo verificar el esquema de TruLens: {exc}")
 
-        # 🟢 2. Crear el registro de feedback (record)
-        record = Record(
-            app_name=app_name,
-            feedback_definition=feedback_def,
-            feedback_result=metrics,
-            metadata=result,
+
+_ensure_modern_schema()
+
+
+def _patch_record_column_properties() -> None:
+    """Expone app_version/app_name en el ORM Record para el dashboard 2.x."""
+
+    record_cls = session.connector.db.orm.Record
+    app_cls = session.connector.db.orm.AppDefinition
+    if not hasattr(record_cls, "app_version"):
+        record_cls.app_version = column_property(  # type: ignore[attr-defined]
+            sa.select(app_cls.app_version)
+            .where(app_cls.app_id == record_cls.app_id)  # type: ignore[arg-type]
+            .scalar_subquery()
+        )
+    if not hasattr(record_cls, "app_name"):
+        record_cls.app_name = column_property(  # type: ignore[attr-defined]
+            sa.select(app_cls.app_name)
+            .where(app_cls.app_id == record_cls.app_id)  # type: ignore[arg-type]
+            .scalar_subquery()
         )
 
-        # 🟢 3. Guardar el registro en la base
-        session.add_record(record)
-        session.commit()
 
-        print(f"✅ Métricas registradas correctamente en TruLens para {app_name}")
+_patch_record_column_properties()
 
-    except Exception as e:
-        print(f"⚠️ Error al registrar métricas TruLens: {e}")
+_VIRTUAL_CACHE: Dict[str, TruVirtual] = {}
+
+
+def _get_virtual_app(app_name: str, app_version: str) -> TruVirtual:
+    """Obtiene (o crea) un TruVirtual asociado al par app_name/app_version."""
+
+    cache_key = f"{app_name}:{app_version}"
+    if cache_key not in _VIRTUAL_CACHE:
+        virtual_app = VirtualApp(
+            {
+                "app_name": app_name,
+                "app_version": app_version,
+                "uuid": str(uuid.uuid4()),
+            }
+        )
+        _VIRTUAL_CACHE[cache_key] = TruVirtual(
+            app=virtual_app,
+            app_name=app_name,
+            app_version=app_version,
+            connector=session.connector,
+        )
+    return _VIRTUAL_CACHE[cache_key]
+
+
+def log_prompt_execution(
+    *,
+    app_name: str,
+    app_version: str,
+    prompt: str,
+    inputs: Dict[str, Any],
+    output: Any,
+    metadata: Optional[Dict[str, Any]] = None,
+    metrics: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Registra una ejecución en TruLens para inspeccionarla vía dashboard."""
+
+    try:
+        if session.experimental_feature(Feature.OTEL_TRACING):
+            print("ℹ️ OTEL tracing activo; se omite el registro manual en TruLens.")
+            return
+
+        recorder = _get_virtual_app(app_name, app_version)
+
+        meta_payload: Dict[str, Any] = dict(metadata or {})
+        if metrics:
+            meta_payload["metrics"] = metrics
+
+        record = VirtualRecord(
+            calls={},
+            main_input={
+                "prompt": prompt,
+                "inputs": inputs,
+            },
+            main_output=output,
+            meta=meta_payload,
+        )
+
+        recorder.add_record(record)
+
+        print(
+            f"✅ Registro TruLens guardado: app={app_name} version={app_version}"
+        )
+        print(f"🗂️ DB: {TRULENS_DB_PATH}")
+
+    except Exception as exc:  # pragma: no cover - logging defensivo
+        print(f"⚠️ Error al registrar ejecución TruLens: {exc}")
+
+
+def register_eval(
+    app_name: str,
+    result: Dict[str, Any],
+    metrics: Optional[Dict[str, Any]],
+    *,
+    app_version: str = "base",
+    prompt: Optional[str] = None,
+    model_inputs: Optional[Dict[str, Any]] = None,
+    model_output: Optional[Any] = None,
+) -> None:
+    """Compatibilidad retro: mantiene la firma original y enriquece el log."""
+
+    log_prompt_execution(
+        app_name=app_name,
+        app_version=app_version,
+        prompt=prompt or result.get("prompt", "Prompt no disponible"),
+        inputs=model_inputs or result,
+        output=model_output if model_output is not None else metrics,
+        metadata=result,
+        metrics=metrics,
+    )
