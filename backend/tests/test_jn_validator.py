@@ -1,15 +1,15 @@
 import asyncio
-from backend.agents.jn_validator import JNValidatorAgent
+from backend.agents.validator import JNValidatorAgent
 
 
 async def test_validator_flow():
     json_a = {
         "structured_output": """{
             "seccion": "JN.1",
-            "resumen": "Montaje de mercadillo con 15 puestos en la plaza del pueblo",
-            "actividad": {"tipo": "mercadillo"},
-            "ubicacion": {"lugar": "plaza del pueblo"},
-            "capacidad": {"puestos": 15}
+            "user_text": "Montaje de mercadillo con 15 puestos en la plaza del pueblo",
+            "objeto": {"tipo": "mercadillo"},
+            "alcance": {"lugar": "plaza del pueblo"},
+            "ambito": {"puestos": 15}
         }""",
         "metadata": {"status": "success"}
     }
