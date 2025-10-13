@@ -1,106 +1,141 @@
 """
-Generator A (instrumentado)
+Generator A 
 ----------------------------
 Genera el contenido estructurado (JSON_A) a partir del Prompt A.
-Integra trazabilidad con LangFuse y devuelve la estructura canónica.
+Integra trazabilidad LangFuse y evaluación TruLens.
+Listo para uso directo o como nodo LangGraph (.as_node()).
 """
 
 import os
+import json
 import datetime
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from backend.core.llm_client import get_llm
 from backend.core.trulens_client import register_eval
+from backend.core.langfuse_client import langfuse
 
 load_dotenv()
 
 
 class GeneratorA:
-    def __init__(self):
-        self.llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-5"),
-            api_key=os.getenv("OPENAI_API_KEY"),
-            temperature=0.2
-        )
+    """
+    Generador del JSON_A (estructura de datos canónica)
+    Entrada: prompt_a + user_text (+ contexto Golden y dependencias)
+    Salida: state actualizado con json_a
+    """
 
-    async def ainvoke(self, inputs: dict):
+    def __init__(self):
+        # El modelo se carga desde llm_client con configuración global
+        self.llm = get_llm(task_type="json_a", temperature=0.2)
+
+    async def ainvoke(self, state: dict):
         """
-        inputs esperados:
+        Espera:
         {
           "prompt_a": "...",
           "user_text": "...",
           "documento": "JN",
           "seccion": "JN.1",
-          "expediente_id": "EXP-001"
+          "expediente_id": "EXP-001",
+          "context": "...",              # opcional
+          "citas_golden": [...],         # opcional
+          "dependencias_previas": [...]  # opcional
         }
         """
-        prompt_text = inputs.get("prompt_a") or "No se ha proporcionado prompt A"
-        user_text = inputs.get("user_text", "")
-        expediente_id = inputs.get("expediente_id", "EXP-000")
-        documento = inputs.get("documento", "JN")
-        seccion = inputs.get("seccion", "JN.x")
 
-        # Construcción del prompt final
-        full_prompt = f"{prompt_text}\n\nTexto del usuario:\n{user_text}"
+        with langfuse.start_as_current_span(name="generator_a"):
+            prompt_a = state.get("prompt_a", "")
+            user_text = state.get("user_text", "")
+            context = state.get("context", "")
+            golden = state.get("citas_golden", [])
+            dependencias = state.get("dependencias_previas", [])
+            expediente_id = state.get("expediente_id", "EXP-000")
+            documento = state.get("documento", "JN")
+            seccion = state.get("seccion", "JN.x")
 
-        try:
-            response = await self.llm.ainvoke(full_prompt)
-            structured_output = response.content
+            # === Construcción del prompt mejorado ===
+            full_prompt = f"""
+{prompt_a}
 
-            # === Estructura JSON_A canónica ===
-            json_a = {
-                "schema_version": "1.0.0",
-                "doc": documento,
-                "seccion": seccion,
-                "expediente_id": expediente_id,
-                "nodo": "A",
-                "version": 1,
-                "timestamp": datetime.datetime.utcnow().isoformat(),
-                "actor": "G",
-                "proveniencia": "A(JSON) desde UI+Golden",
-                "data": {"structured_output": structured_output},
-                "citas_golden": [],
-                "citas_normativas": [],
-                "faltantes": [],
-                "alertas": [],
-                "dependencias": [],
-                "score_local": {
-                    "estructura": 0,
-                    "cumplimiento": 0,
-                    "narrativa": 0
-                },
-                "metadata": {
-                    "model": self.llm.model_name,
-                    "status": "success"
-                }
-            }
+[DATOS DEL USUARIO]
+{user_text}
 
-            register_eval(
-                app_name=f"{documento}-{seccion}",
-                result={
-                    "expediente_id": expediente_id,
-                    "documento": documento,
+[CONTEXTO NORMATIVO]
+{context or "Sin contexto disponible."}
+
+[REFERENCIAS GOLDEN]
+{json.dumps(golden, ensure_ascii=False, indent=2)}
+
+[DEPENDENCIAS PREVIAS]
+{json.dumps(dependencias, ensure_ascii=False, indent=2)}
+
+[INSTRUCCIONES]
+- Devuelve SOLO un objeto JSON válido UTF-8.
+- No inventes datos; usa "faltantes" si la información no está presente.
+- Sigue el esquema canónico del documento.
+"""
+
+            try:
+                # === 1️⃣ Invocación al modelo ===
+                response = await self.llm.ainvoke(full_prompt)
+                structured_output = response.content
+
+                # === 2️⃣ Intento de parsear el JSON ===
+                try:
+                    parsed_json = json.loads(structured_output)
+                    parse_error = None
+                except json.JSONDecodeError as e:
+                    parsed_json = {"structured_output": structured_output}
+                    parse_error = str(e)
+
+                # === 3️⃣ Construcción del JSON_A canónico ===
+                json_a = {
+                    "schema_version": "1.0.0",
+                    "doc": documento,
                     "seccion": seccion,
-                    "modo": "json_a",
-                    "model": self.llm.model_name,
-                },
-                metrics=None,
-                app_version="json_a",
-                prompt=prompt_text,
-                model_inputs={
-                    "user_text": user_text,
-                },
-                model_output=structured_output,
-            )
-
-            return {"json_a": json_a}
-
-        except Exception as e:
-            return {
-                "json_a": {
-                    "structured_output": None,
+                    "expediente_id": expediente_id,
+                    "nodo": "A",
+                    "version": 1,
+                    "timestamp": datetime.datetime.utcnow().isoformat(),
+                    "actor": "G",
+                    "proveniencia": "A(JSON) desde UI+Golden",
+                    "data": parsed_json,
+                    "faltantes": [],
+                    "alertas": [parse_error] if parse_error else [],
+                    "citas_golden": golden,
+                    "dependencias": dependencias,
+                    "score_local": {"estructura": 0, "cumplimiento": 0, "narrativa": 0},
                     "metadata": {
-                        "error": str(e),
-                        "status": "failed"
-                    }
+                        "model": self.llm.model_name,
+                        "status": "success" if not parse_error else "warning"
+                    },
                 }
-            }
+
+                # === 4️⃣ Registro de la evaluación (TruLens) ===
+                register_eval(
+                    app_name=f"{documento}-{seccion}",
+                    result={
+                        "expediente_id": expediente_id,
+                        "documento": documento,
+                        "seccion": seccion,
+                        "modo": "json_a",
+                        "model": self.llm.model_name,
+                    },
+                    metrics=None,
+                    app_version="json_a",
+                    prompt=full_prompt,
+                    model_inputs={"user_text": user_text},
+                    model_output=structured_output,
+                )
+
+                # === 5️⃣ Actualización del estado ===
+                state["json_a"] = json_a
+                return state
+
+            except Exception as e:
+                # Manejo robusto de errores (no rompe el flujo del grafo)
+                state["json_a"] = {
+                    "data": None,
+                    "metadata": {"error": str(e), "status": "failed"}
+                }
+                return state
