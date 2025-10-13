@@ -58,9 +58,22 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
         raise HTTPException(status_code=400, detail="narrative_llm_choice debe ser 'openai' o 'groq'")
 
     rag_context_str = ""
+    citas_golden = []
+    citas_normativas = []
+    all_rag_metadata = []
+
     if request.rag_query:
         results = vectorstore.similarity_search(request.rag_query, k=3)
         rag_context_str = "\n\nContexto de Normativa Relevante:\n" + "\n---\n".join([doc.page_content for doc in results])
+
+        for doc in results:
+            citas_golden.append(doc.metadata.get("golden_citation", ""))
+            citas_normativas.append(doc.metadata.get("normative_citation", ""))
+            all_rag_metadata.append(doc.metadata)
+
+    # Filtrar entradas vacías
+    citas_golden = [c for c in citas_golden if c]
+    citas_normativas = [c for c in citas_normativas if c]
 
     request.user_input.rag_context = rag_context_str
 
@@ -74,39 +87,38 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
         expediente_id = request.user_input.expediente_id
         documento = "JN"
 
-        # --- Guardado flexible ---
-        if "json_a" in jn_output:
-            json_a_dict = to_dict_safe(jn_output["json_a"])
-            await save_output(
-                expediente_id,
-                documento,
-                json_a_dict.get("seccion", request.user_input.seccion),
-                "A",
-                json_a_dict
-            )
+        # --- Guardado de outputs ---
+        # Extraer json_a (objeto_alcance estructurado)
+        json_a_dict = to_dict_safe(jn_output.objeto_alcance)
+        json_a_dict.update({
+            "citas_golden": citas_golden,
+            "citas_normativas": citas_normativas,
+            "rag_metadata": all_rag_metadata # Añadimos todos los metadatos para depuración
+        })
+        await save_output(
+            expediente_id,
+            documento,
+            json_a_dict.get("seccion", request.user_input.seccion),
+            "A",
+            json_a_dict
+        )
 
-        if "json_b" in jn_output:
-            json_b_dict = to_dict_safe(jn_output["json_b"])
-            await save_output(
-                expediente_id,
-                documento,
-                json_b_dict.get("seccion", request.user_input.seccion),
-                "B",
-                json_b_dict
-            )
+        # Extraer json_b (narrativa)
+        json_b_dict = {
+            "narrativa": jn_output.narrativa
+        }
+        await save_output(
+            expediente_id,
+            documento,
+            request.user_input.seccion,
+            "B",
+            json_b_dict
+        )
 
-        # fallback → si no está dividido
-        if "json_a" not in jn_output and "json_b" not in jn_output:
-            jn_output_dict = to_dict_safe(jn_output)
-            await save_output(
-                expediente_id,
-                documento,
-                request.user_input.seccion,
-                "B",
-                jn_output_dict
-            )
-
-        return jn_output
+        return {
+            "json_a": json_a_dict,
+            "json_b": json_b_dict
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
