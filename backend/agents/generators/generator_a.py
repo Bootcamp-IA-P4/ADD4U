@@ -76,11 +76,11 @@ class GeneratorA:
 """
 
             try:
-                # === 1️⃣ Invocación al modelo ===
+                # === Invocación al modelo ===
                 response = await self.llm.ainvoke(full_prompt)
                 structured_output = response.content
 
-                # === 2️⃣ Intento de parsear el JSON ===
+                # === Intento de parsear el JSON ===
                 try:
                     parsed_json = json.loads(structured_output)
                     parse_error = None
@@ -88,7 +88,7 @@ class GeneratorA:
                     parsed_json = {"structured_output": structured_output}
                     parse_error = str(e)
 
-                # === 3️⃣ Construcción del JSON_A canónico ===
+                # === Construcción del JSON_A canónico ===
                 json_a = {
                     "schema_version": "1.0.0",
                     "doc": documento,
@@ -111,7 +111,7 @@ class GeneratorA:
                     },
                 }
 
-                # === 4️⃣ Registro de la evaluación (TruLens) ===
+                # === Registro de la evaluación (TruLens) ===
                 register_eval(
                     app_name=f"{documento}-{seccion}",
                     result={
@@ -128,7 +128,7 @@ class GeneratorA:
                     model_output=structured_output,
                 )
 
-                # === 5️⃣ Actualización del estado ===
+                # === Actualización del estado ===
                 state["json_a"] = json_a
                 return state
 

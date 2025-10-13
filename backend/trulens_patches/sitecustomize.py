@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable
+from typing import Any, Dict, Iterable
 
 import pandas as pd
 import streamlit as st
@@ -79,6 +79,26 @@ def _safe_get_records_and_feedback(*args, **kwargs):
     """Normaliza columnas complejas para que Streamlit no falle con Arrow."""
 
     records_df, feedback_cols = _original_get_records_and_feedback(*args, **kwargs)
+
+    # Extrae métricas almacenadas en record_json.meta.metrics para mostrarlas como columnas.
+    if "record_json" in records_df.columns:
+        def _extract_metrics(value: Any) -> Dict[str, Any]:
+            try:
+                parsed = json.loads(value) if isinstance(value, str) else value
+                if not isinstance(parsed, dict):
+                    return {}
+                meta = parsed.get("meta", {})
+                metrics = meta.get("metrics", {})
+                return metrics if isinstance(metrics, dict) else {}
+            except Exception:
+                return {}
+
+        metrics_df = pd.json_normalize(records_df["record_json"].apply(_extract_metrics))
+        if not metrics_df.empty:
+            metrics_df = metrics_df.add_prefix("metric_")
+            # Pandas alinea por índice; no rota filas aunque alguna ejecución no tenga métricas.
+            for column in metrics_df.columns:
+                records_df[column] = metrics_df[column]
 
     for column_name in ("input", "output", "record_json", "record_metadata"):
         if column_name in records_df.columns:
