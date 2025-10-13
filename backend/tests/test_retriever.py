@@ -15,7 +15,7 @@ async def test_retriever_agent_connection():
     query = {
         "documento": "JN",
         "seccion": "JN.1",
-        "user_text": "Queremos montar un mercadillo con 15 puestos en la plaza del pueblo."
+        "user_text": "Necesito saber qué normativa regula la presentación electrónica de ofertas",
     }
 
     print("🔍 Ejecutando consulta de prueba...")
