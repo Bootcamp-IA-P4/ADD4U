@@ -1,29 +1,36 @@
 """
-Generator B (instrumentado)
+Generator B (versión final)
 ----------------------------
 Genera la narrativa final (JSON_B) a partir del contenido estructurado (JSON_A).
-Integra evaluación local con TruLens.
+Integra evaluación TruLens y trazabilidad LangFuse.
+Listo para uso directo o como nodo LangGraph (.as_node()).
 """
 
 import os
+import json
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from backend.core.llm_client import get_llm
 from backend.core.trulens_client import register_eval
+from backend.core.trulens_metrics import compute_basic_metrics
+from backend.core.langfuse_client import langfuse
 
 load_dotenv()
 
 
 class GeneratorB:
-    def __init__(self):
-        self.llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-5"),
-            api_key=os.getenv("OPENAI_API_KEY"),
-            temperature=0.4
-        )
+    """
+    Generador de la narrativa (JSON_B)
+    Entrada: prompt_b + json_a + user_text
+    Salida: state actualizado con json_b
+    """
 
-    async def ainvoke(self, inputs: dict):
+    def __init__(self):
+        # Configuramos el modelo para tareas narrativas (mayor longitud)
+        self.llm = get_llm(task_type="json_b", temperature=0.3)
+
+    async def ainvoke(self, state: dict):
         """
-        inputs esperados:
+        Espera:
         {
           "json_a": {...},
           "prompt_b": "...",
@@ -33,67 +40,87 @@ class GeneratorB:
           "seccion": "JN.1"
         }
         """
-        structured_data = inputs.get("json_a", {})
-        prompt_b = inputs.get("prompt_b") or "No se ha proporcionado prompt B"
-        expediente_id = inputs.get("expediente_id", "EXP-000")
-        documento = inputs.get("documento", "JN")
-        seccion = inputs.get("seccion", "JN.x")
 
-        full_prompt = (
-            f"{prompt_b}\n\n"
-            f"Datos estructurados previos:\n{structured_data}\n\n"
-            f"Genera una narrativa formal y coherente basada en estos datos."
-        )
+        with langfuse.start_as_current_span(name="generator_b"):
+            structured_data = state.get("json_a", {})
+            prompt_b = state.get("prompt_b", "")
+            user_text = state.get("user_text", "")
+            expediente_id = state.get("expediente_id", "EXP-000")
+            documento = state.get("documento", "JN")
+            seccion = state.get("seccion", "JN.x")
 
-        try:
-            response = await self.llm.ainvoke(full_prompt)
-            narrative = response.content
+            # === Construcción avanzada del prompt narrativo ===
+            full_prompt = f"""
+{prompt_b}
 
-            # === Evaluación básica con TruLens local ===
-            metrics = {
-                "coherencia": 0.9,  # placeholder (más adelante se calculará real)
-                "completitud": 0.85,
-                "tono": "neutral"
-            }
-            register_eval(
-                app_name=f"{documento}-{seccion}",
-                result={
-                    "expediente_id": expediente_id,
-                    "documento": documento,
+[DATOS ESTRUCTURADOS VALIDADOS]
+{json.dumps(structured_data, ensure_ascii=False, indent=2)}
+
+[OBJETIVO]
+Redacta una narrativa formal y coherente basada en los datos estructurados.
+Mantén tono administrativo neutro, evitando repeticiones y sin añadir información no presente.
+
+[ESTILO]
+- Usa párrafos breves y oraciones claras.
+- No repitas texto literal del JSON_A.
+- No incluyas explicaciones externas ni comentarios.
+- Devuelve SOLO el objeto JSON final (JSON_B) con claves:
+  narrativa, calidad, control_llm, etc.
+"""
+
+            try:
+                # === Invocar al modelo ===
+                response = await self.llm.ainvoke(full_prompt)
+                narrative_output = response.content
+
+                # === Calcular métricas de evaluación ===
+                metrics = compute_basic_metrics(structured_data, narrative_output)
+
+                # === Construcción del JSON_B final ===
+                json_b = {
+                    "schema_version": "1.0.0",
+                    "doc": documento,
                     "seccion": seccion,
-                    "modo": "json_b",
-                    "model": self.llm.model_name,
-                },
-                metrics=metrics,
-                app_version="json_b",
-                prompt=prompt_b,
-                model_inputs={
-                    "json_a": structured_data,
-                    "user_text": inputs.get("user_text", ""),
-                },
-                model_output={
-                    "narrative_output": narrative,
-                },
-            )
-
-            return {
-                "json_b": {
-                    "narrative_output": narrative,
-                    "metrics": metrics,
+                    "expediente_id": expediente_id,
+                    "nodo": "B",
+                    "version": 1,
+                    "actor": "G",
+                    "proveniencia": "B(narrativa) desde JSON_A validado",
+                    "narrativa": {"texto": narrative_output},
+                    "calidad": {
+                        "score_local": metrics,
+                        "warnings": []
+                    },
                     "metadata": {
                         "model": self.llm.model_name,
                         "status": "success"
                     }
                 }
-            }
 
-        except Exception as e:
-            return {
-                "json_b": {
-                    "narrative_output": None,
-                    "metadata": {
-                        "error": str(e),
-                        "status": "failed"
-                    }
+                # === Registro de evaluación en TruLens ===
+                register_eval(
+                    app_name=f"{documento}-{seccion}",
+                    result={
+                        "expediente_id": expediente_id,
+                        "documento": documento,
+                        "seccion": seccion,
+                        "modo": "json_b",
+                        "model": self.llm.model_name,
+                    },
+                    metrics=metrics,
+                    app_version="json_b",
+                    prompt=full_prompt,
+                    model_inputs={"json_a": structured_data, "user_text": user_text},
+                    model_output={"narrative_output": narrative_output},
+                )
+
+                # === Actualizar estado global ===
+                state["json_b"] = json_b
+                return state
+
+            except Exception as e:
+                state["json_b"] = {
+                    "narrativa": None,
+                    "metadata": {"error": str(e), "status": "failed"}
                 }
-            }
+                return state
