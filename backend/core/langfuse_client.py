@@ -17,13 +17,17 @@ langfuse = Langfuse(
     host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
 )
 
-# Compatibilidad con versiones antiguas de LangFuse
+
 try:
-    from langfuse.decorators import observe
+    from langfuse import observe  
 except ImportError:
-    def observe(func=None, *_, **__):
-        async def wrapper(*args, **kwargs):
-            return await func(*args, **kwargs)
-        return wrapper
+    try:
+        from langfuse.decorators import observe  # type: ignore[import-error]
+    except ImportError:  
+        def observe(func=None, *_, **__):
+            async def wrapper(*args, **kwargs):
+                return await func(*args, **kwargs)
+
+            return wrapper
 
 __all__ = ["langfuse", "observe"]
