@@ -1,19 +1,58 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-# --- Prompt A: Generador de datos estructurados ---
-# Este prompt toma la información de entrada y la estructura según el esquema Pydantic.
-prompt_a_template = ChatPromptTemplate.from_messages(
-    [
-        ("system", "Eres un asistente experto en la redacción de Justificaciones de la Necesidad para licitaciones públicas. Tu tarea es extraer y estructurar la información proporcionada por el usuario en un formato JSON que cumpla estrictamente con el siguiente esquema Pydantic:\n\n{format_instructions}\n\nSi algún campo no puede ser inferido de la información proporcionada, déjalo como nulo o vacío según el tipo de dato, pero no inventes información crítica. Asegúrate de que el JSON sea válido y completo según el esquema.\n\n{rag_context}\n\n"),
-        ("human", "Genera la Justificación de la Necesidad con la siguiente información:\n\n{user_input}"),
-    ]
+# --- Prompt A: Generador de datos estructurados (dinámico) ---
+# Adaptativo a la presencia de rag_context y campos específicos
+system_template_a = SystemMessagePromptTemplate(prompt=PromptTemplate(
+    template="""Eres un asistente experto en la redacción de Justificaciones de la Necesidad para licitaciones públicas. 
+    Tu tarea es extraer y estructurar la información proporcionada por el usuario en un formato JSON que cumpla estrictamente con el siguiente esquema Pydantic:
+    {format_instructions}
+    
+    **Contexto adicional (RAG):** {rag_context}
+    Usa esta información para enriquecer los campos, especialmente citas normativas o golden.
+    
+    Si algún campo no puede ser inferido, déjalo como nulo/vacío (no inventes datos). Asegúrate de que el JSON sea válido.
+    """,
+    input_variables=["format_instructions", "rag_context"],
+))
+
+human_template_a = HumanMessagePromptTemplate(prompt=PromptTemplate(
+    template="Genera la Justificación de la Necesidad con la siguiente información:\n\n{user_input}",
+    input_variables=["user_input"],
+))
+
+prompt_a_template = ChatPromptTemplate(
+    messages=[
+        system_template_a,
+        human_template_a,
+    ],
+    input_variables=["format_instructions", "rag_context", "user_input"]
 )
 
-# --- Prompt B: Redactor técnico-administrativo ---
-# Este prompt toma los datos estructurados y genera la narrativa final.
-prompt_b_template = ChatPromptTemplate.from_messages(
-    [
-        ("system", "Eres un redactor técnico-administrativo. Tu tarea es transformar los datos estructurados de una Justificación de la Necesidad en una narrativa coherente, formal y profesional. El tono debe ser administrativo y neutro. Cita las fuentes o datos relevantes cuando sea necesario. Genera la narrativa en formato JSON, donde cada sección sea un párrafo o conjunto de párrafos bajo una clave descriptiva (ej. 'objeto_alcance_narrativa', 'contexto_problema_narrativa')."),
-        ("human", "Genera la narrativa de la Justificación de la Necesidad a partir de los siguientes datos estructurados:\n\n{structured_data}"),
-    ]
+# --- Prompt B: Redactor técnico-administrativo (dinámico) ---
+# Adaptativo a la presencia de citas en los datos estructurados
+system_template_b = SystemMessagePromptTemplate(prompt=PromptTemplate(
+    template="""Eres un redactor técnico-administrativo. 
+    Transforma los datos estructurados en una narrativa coherente y formal. 
+    El tono debe ser administrativo y neutro. 
+    
+    **Importante:** Incluye explícitamente las siguientes citas en secciones dedicadas:
+    Citas Golden: {citas_golden}
+    Citas Normativas: {citas_normativa}
+    
+    Genera la narrativa en JSON con claves descriptivas (ej. 'objeto_alcance_narrativa').
+    """,
+    input_variables=["structured_data", "citas_golden", "citas_normativa"],
+))
+
+human_template_b = HumanMessagePromptTemplate(prompt=PromptTemplate(
+    template="Genera la narrativa a partir de los siguientes datos:\n\n{structured_data}",
+    input_variables=["structured_data"],
+))
+
+prompt_b_template = ChatPromptTemplate(
+    messages=[
+        system_template_b,
+        human_template_b,
+    ],
+    input_variables=["structured_data", "citas_golden", "citas_normativa"]
 )

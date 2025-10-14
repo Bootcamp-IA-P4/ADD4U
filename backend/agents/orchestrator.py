@@ -10,6 +10,7 @@ from backend.agents.prompt_manager import PromptManager
 from backend.agents.validator_agent import ValidatorAgent
 from backend.agents.generators.generator_a import GeneratorA
 from backend.agents.generators.generator_b import GeneratorB
+from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
 
 # ============================================================
 # 🔹 1. Definición del esquema de estado
@@ -20,6 +21,7 @@ class OrchestratorState(TypedDict, total=False):
     seccion: str
     user_text: str
     context: str
+    rag_results: list # Cambiado de 'context' a 'rag_results'
     prompt_a: str
     prompt_b: str
     json_a: dict
@@ -29,7 +31,7 @@ class OrchestratorState(TypedDict, total=False):
 # ============================================================
 # 🔹 2. Grafo funcional con agentes stub y generadores reales
 # ============================================================
-def build_orchestrator():
+def build_orchestrator(debug_mode: bool = False):
     """
     Construye el grafo LangGraph que conecta los agentes.
     Versión de desarrollo: usa .ainvoke para compatibilidad con stubs.
@@ -38,15 +40,40 @@ def build_orchestrator():
 
     # Instancias de agentes
     retriever = RetrieverAgent()
-    prompt_manager = PromptManager()
+    prompt_manager = PromptManager(prompt_a_template, prompt_b_template, debug_mode=debug_mode)
     generator_a = GeneratorA()
     validator_a = ValidatorAgent(mode="estructurado")
     generator_b = GeneratorB()
     validator_b = ValidatorAgent(mode="narrativa")
 
+    generator_b = GeneratorB()
+    validator_b = ValidatorAgent(mode="narrativa")
+
+    # Definir el nodo prompt_manager_node como una función que envuelve la lógica de PromptManager
+    def prompt_manager_node(state: OrchestratorState):
+        user_text = state.get("user_text", "")
+        rag_results = state.get("rag_results", [])
+        # Asumiendo que format_instructions se genera en algún punto o es constante
+        # Para este ejemplo, lo dejaremos como un placeholder
+        format_instructions = "Instrucciones de formato Pydantic para OutputJsonA..."
+
+        prompt_a = prompt_manager.build_prompt_a(
+            user_input=user_text,
+            format_instructions=format_instructions,
+            rag_results=rag_results
+        )
+        # Aquí, structured_data vendría del output de GeneratorA, pero para el prompt_b
+        # en este punto del flujo, aún no lo tenemos. Se pasará en el siguiente paso.
+        prompt_b = prompt_manager.build_prompt_b(
+            user_input=user_text,
+            format_instructions="", # No se usa para prompt B directamente
+            rag_results=rag_results
+        )
+        return {"prompt_a": prompt_a, "prompt_b": prompt_b}
+
     # Añadir nodos
     graph.add_node("retriever", retriever.ainvoke)
-    graph.add_node("prompt_manager", prompt_manager.ainvoke)
+    graph.add_node("prompt_manager", prompt_manager_node)
     graph.add_node("generator_a", generator_a.ainvoke)
     graph.add_node("validator_a", validator_a.ainvoke)
     graph.add_node("generator_b", generator_b.ainvoke)
@@ -60,7 +87,6 @@ def build_orchestrator():
     graph.add_edge("validator_a", "generator_b")
     graph.add_edge("generator_b", "validator_b")
     graph.add_edge("validator_b", END)
-
 
     # Compilar el grafo
     return graph.compile()

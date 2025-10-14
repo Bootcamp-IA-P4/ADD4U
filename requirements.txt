@@ -1,4 +1,3 @@
-fastapi
 uvicorn
 pydantic-settings
 python-dotenv
@@ -17,3 +16,6 @@ tiktoken
 sentence-transformers
 langchain-huggingface
 langgraph
+langfuse
+trulens
+streamlit
