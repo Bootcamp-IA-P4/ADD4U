@@ -1,5 +1,5 @@
 import asyncio
-from backend.agents.validator import JNValidatorAgent
+from backend.agents.validator import ValidatorAgent
 
 
 async def test_validator_flow():
@@ -15,12 +15,12 @@ async def test_validator_flow():
     }
 
     json_b = {
-        "narrative_output": "En el marco de la sección JN.1 se propone la instalación de un mercadillo en la plaza del pueblo, compuesto por un total de 15 puestos. La actuación contempla el montaje de la infraestructura necesaria en dicho espacio público.",
+        "narrative_output": "En el marco de la sección JN.1 se propone la instalación de un juego en la plaza del pueblo, compuesto por un total de 15 puestos. La actuación contempla el montaje de la infraestructura necesaria en dicho espacio público.",
         "metadata": {"status": "success"}
     }
 
-    validator_a = JNValidatorAgent(mode="estructurado")
-    validator_b = JNValidatorAgent(mode="narrativa")
+    validator_a = ValidatorAgent(mode="estructurado")
+    validator_b = ValidatorAgent(mode="narrativa")
 
     state = {"json_a": json_a, "json_b": json_b}
 

@@ -9,6 +9,18 @@ import json
 import re
 import unicodedata
 from typing import Any, Dict, List, Tuple
+from langfuse import Langfuse
+from langfuse import observe
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+langfuse = Langfuse(
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+    host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
+)
 
 class ValidatorAgent:
     def __init__(self, mode: str):
@@ -42,7 +54,7 @@ class ValidatorAgent:
             values.append((prefix, str(data)))
         return values
 
-    
+    @observe(name="validate_json_a")
     def validate_json_a(self, json_a: Dict[str, Any]) -> Dict[str, Any]:
         if not json_a or "structured_output" not in json_a:
             return {"json_a_valid": False, "error": "json_a vacío o sin campo 'structured_output'"}
@@ -55,7 +67,8 @@ class ValidatorAgent:
             return {"json_a_valid": False, "error": f"Error leyendo structured_output: {e}"}
 
         return {"json_a_valid": True, "message": "JSON_A validado correctamente."}
-
+    
+    @observe(name="validate_json_b")
     def validate_json_b(self, json_b: Dict[str, Any], json_a: Dict[str, Any]) -> Dict[str, Any]:
         if not json_b or "narrative_output" not in json_b:
             return {"json_b_valid": False, "error": "json_b vacío o sin campo 'narrative_output'."}
@@ -108,7 +121,7 @@ class ValidatorAgent:
 
         return {"json_b_valid": True, "message": "JSON_B validado correctamente."}
 
-
+    @observe(name="validator_ainvoke")
     async def ainvoke(self, state: Dict[str, Any]) -> Dict[str, Any]:
         if self.mode == "estructurado":
             json_a = state.get("json_a")
