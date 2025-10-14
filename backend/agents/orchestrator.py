@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, START, END
 from typing import TypedDict
 from backend.agents.retriever_agent import RetrieverAgent
 from backend.agents.prompt_manager import PromptManager
-from backend.agents.validator_agent import ValidatorAgent
+from backend.agents.validator import ValidatorAgent
 from backend.agents.generators.generator_a import GeneratorA
 from backend.agents.generators.generator_b import GeneratorB
 from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
