@@ -10,10 +10,10 @@ import re
 import unicodedata
 from typing import Any, Dict, List, Tuple
 
-class JNValidatorAgent:
+class ValidatorAgent:
     def __init__(self, mode: str):
         if mode not in ["estructurado", "narrativa"]:
-            raise ValueError("JNValidatorAgent: modo inválido, usa 'estructurado' o 'narrativa'")
+            raise ValueError("ValidatorAgent: modo inválido, usa 'estructurado' o 'narrativa'")
 
         self.mode = mode
 
