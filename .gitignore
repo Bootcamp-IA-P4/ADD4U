@@ -143,3 +143,10 @@ app.log
 # -----------------------
 **/*.backup.*
 **/*.back.*
+
+# -----------------------
+# TruLens local database
+# -----------------------
+backend/trulens_data/
+*.db
+default.sqlite
