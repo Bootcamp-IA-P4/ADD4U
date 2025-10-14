@@ -17,3 +17,6 @@ tiktoken
 sentence-transformers
 langchain-huggingface
 langgraph
+langfuse
+trulens
+streamlit
