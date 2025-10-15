@@ -8,9 +8,6 @@ system_template_a = SystemMessagePromptTemplate(prompt=PromptTemplate(
         Tu tarea es extraer y estructurar la información proporcionada por el usuario en un formato JSON que cumpla estrictamente con el siguiente esquema Pydantic:
 
         [SCHEMA]
-        {section_specific_instructions}
-
-        [SCHEMA_BASE]
         {format_instructions}
 
         [CONTEXTO ADICIONAL]

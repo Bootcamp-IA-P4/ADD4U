@@ -62,7 +62,7 @@ def get_llm(
     try:
         if provider == "groq" and HAS_GROQ:
             api_key = os.getenv("GROQ_API_KEY")
-            model_name = model_name or os.getenv("GROQ_MODEL", "mixtral-8x7b")
+            model_name = model_name or os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
             if not api_key:
                 raise ValueError("Falta GROQ_API_KEY en .env")
             print(f"[LLM Client] Usando Groq model={model_name}")

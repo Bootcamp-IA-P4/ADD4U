@@ -52,6 +52,7 @@ class GeneratorA:
             expediente_id = state.get("expediente_id", "EXP-000")
             documento = state.get("documento", "JN")
             seccion = state.get("seccion", "JN.x")
+            json_schema = state.get("json_schema", "")
 
             # === Construcción del prompt mejorado ===
             full_prompt = f"""
@@ -71,10 +72,12 @@ class GeneratorA:
 
 [INSTRUCCIONES]
 - Devuelve SOLO un objeto JSON válido UTF-8.
+- No incluyas ningún texto adicional, explicaciones o formato que no sea el JSON.
 - No inventes datos; usa "faltantes" si la información no está presente.
 - Sigue el esquema canónico del documento.
 """
 
+            print("Full Prompt para Generator A:\n", full_prompt)
             try:
                 # === Invocación al modelo ===
                 response = await self.llm.ainvoke(full_prompt)

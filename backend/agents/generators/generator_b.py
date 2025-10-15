@@ -86,7 +86,7 @@ Mantén tono administrativo neutro, evitando repeticiones y sin añadir informac
                     "version": 1,
                     "actor": "G",
                     "proveniencia": "B(narrativa) desde JSON_A validado",
-                    "narrativa": {"texto": narrative_output},
+                    "narrative_output": narrative_output,
                     "calidad": {
                         "score_local": metrics,
                         "warnings": []
