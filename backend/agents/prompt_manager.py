@@ -4,7 +4,7 @@ PromptManager
 Gestiona la construcción de prompts dinámicos para los generadores A y B,
 utilizando las plantillas definidas en jn_prompts.py.
 """
-from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
+from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template, PROMPT_PARSER_SLOTS_JN
 from backend.models.schemas_jn import JustificacionNecesidadStructured
 from typing import Optional
 
@@ -33,41 +33,38 @@ class PromptManager:
         """
         return '\n'.join([item.get('content', '') for item in rag_results or []])
 
-    def build_prompt_a(self, user_input, format_instructions, rag_results=None, structured_data=None):
+    def build_prompt_a(self, user_input, format_instructions, section_key: str = None, rag_results=None, section_specific_instructions: str = None):
         """
-        Construye el prompt para el generador A, integrando contexto RAG y citas.
+        Construye el prompt para el generador A, integrando contexto RAG.
         """
-        citas_golden, citas_normativa = self.extract_citas(rag_results)
         rag_context = self.format_rag_context(rag_results)
-        prompt = self.prompt_a_template.format(
+        # Usa la instrucción refinada si se proporciona, de lo contrario, usa la estática
+        final_section_instructions = section_specific_instructions if section_specific_instructions is not None else \
+                                     PROMPT_PARSER_SLOTS_JN.get(section_key, {}).get("instruction", "")
+        prompt_messages = self.prompt_a_template.format_messages(
             user_input=user_input,
             format_instructions=format_instructions,
-            rag_context=rag_context,
-            structured_data=structured_data or "",
-            citas_golden='\n'.join(citas_golden),
-            citas_normativa='\n'.join(citas_normativa)
+            section_specific_instructions=final_section_instructions,
+            rag_context=rag_context
         )
         if self.debug_mode:
-            print("Prompt A:", prompt)
-        return prompt
+            print("Prompt A Messages:", prompt_messages)
+        return prompt_messages
 
-    def build_prompt_b(self, user_input, format_instructions, rag_results=None, structured_data=None):
+    def build_prompt_b(self, structured_data, citas_golden=None, citas_normativa=None):
         """
-        Construye el prompt para el generador B, integrando contexto RAG y citas.
+        Construye el prompt para el generador B, integrando citas.
         """
-        citas_golden, citas_normativa = self.extract_citas(rag_results)
-        rag_context = self.format_rag_context(rag_results)
-        prompt = self.prompt_b_template.format(
-            user_input=user_input,
-            format_instructions=format_instructions,
-            rag_context=rag_context,
-            structured_data=structured_data or "",
+        citas_golden = citas_golden or []
+        citas_normativa = citas_normativa or []
+        prompt_messages = self.prompt_b_template.format_messages(
+            structured_data=structured_data,
             citas_golden='\n'.join(citas_golden),
             citas_normativa='\n'.join(citas_normativa)
         )
         if self.debug_mode:
-            print("Prompt B:", prompt)
-        return prompt
+            print("Prompt B Messages:", prompt_messages)
+        return prompt_messages
 
     def set_debug_mode(self, debug):
         """
@@ -95,10 +92,10 @@ class PromptManager:
         citas_normativa = inputs.get("citas_normativa", [])
 
         # Construir Prompt A
-        prompt_a_messages = prompt_a_template.format_messages(
+        prompt_a_messages = self.build_prompt_a(
+            user_input=user_input,
             format_instructions=format_instructions,
-            rag_context=rag_context,
-            user_input=user_input
+            rag_results=inputs.get("rag_results")
         )
         
         # Construir Prompt B
@@ -110,16 +107,10 @@ class PromptManager:
         else:
             structured_data_dict = {} # Fallback
 
-        # Añadir citas al structured_data_dict si existen para que Jinja2 las vea
-        if citas_golden:
-            structured_data_dict["citas_golden"] = citas_golden
-        if citas_normativa:
-            structured_data_dict["citas_normativa"] = citas_normativa
-
-        prompt_b_messages = prompt_b_template.format_messages(
+        prompt_b_messages = self.build_prompt_b(
             structured_data=structured_data_dict,
-            citas_golden='\n'.join(citas_golden),
-            citas_normativa='\n'.join(citas_normativa)
+            citas_golden=citas_golden,
+            citas_normativa=citas_normativa
         )
 
         return {

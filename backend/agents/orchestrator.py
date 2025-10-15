@@ -6,11 +6,12 @@ Versión actual: funcional con agentes stub (usa .ainvoke)
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict
 from backend.agents.retriever_agent import RetrieverAgent
+from backend.agents.prompt_refiner import PromptRefinerAgent
 from backend.agents.prompt_manager import PromptManager
 from backend.agents.validator import ValidatorAgent
 from backend.agents.generators.generator_a import GeneratorA
 from backend.agents.generators.generator_b import GeneratorB
-from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template
+from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template, PROMPT_PARSER_SLOTS_JN
 
 # ============================================================
 # 🔹 1. Definición del esquema de estado
@@ -22,6 +23,7 @@ class OrchestratorState(TypedDict, total=False):
     user_text: str
     context: str
     rag_results: list # Cambiado de 'context' a 'rag_results'
+    refined_section_instruction: str # Nueva clave para la instrucción refinada
     prompt_a: str
     prompt_b: str
     json_a: dict
@@ -41,6 +43,7 @@ def build_orchestrator(debug_mode: bool = False):
     # Instancias de agentes
     retriever = RetrieverAgent()
     prompt_manager = PromptManager(prompt_a_template, prompt_b_template, debug_mode=debug_mode)
+    prompt_refiner = PromptRefinerAgent()
     generator_a = GeneratorA()
     validator_a = ValidatorAgent(mode="estructurado")
     generator_b = GeneratorB()
@@ -49,10 +52,30 @@ def build_orchestrator(debug_mode: bool = False):
     generator_b = GeneratorB()
     validator_b = ValidatorAgent(mode="narrativa")
 
+    # Definir el nodo prompt_refiner_node
+    async def prompt_refiner_node(state: OrchestratorState) -> OrchestratorState:
+        print("---EJECUTANDO AGENTE REFINADOR DE PROMPTS---")
+        seccion = state.get("seccion", None)
+        user_text = state.get("user_text", "")
+        rag_results = state.get("rag_results", [])
+        base_section_instruction = PROMPT_PARSER_SLOTS_JN.get(seccion, {}).get("instruction", "")
+
+        inputs = {
+            "base_section_instruction": base_section_instruction,
+            "user_input": user_text,
+            "rag_context": "\n".join([res.get('content', '') for res in rag_results]),
+            "section_key": seccion
+        }
+        refined_output = await prompt_refiner.ainvoke(inputs)
+        state["refined_section_instruction"] = refined_output["refined_section_instruction"]
+        return state
+
     # Definir el nodo prompt_manager_node como una función que envuelve la lógica de PromptManager
     def prompt_manager_node(state: OrchestratorState):
         user_text = state.get("user_text", "")
         rag_results = state.get("rag_results", [])
+        seccion = state.get("seccion", None)
+        refined_section_instruction = state.get("refined_section_instruction", "")
         # Asumiendo que format_instructions se genera en algún punto o es constante
         # Para este ejemplo, lo dejaremos como un placeholder
         format_instructions = "Instrucciones de formato Pydantic para OutputJsonA..."
@@ -60,19 +83,20 @@ def build_orchestrator(debug_mode: bool = False):
         prompt_a = prompt_manager.build_prompt_a(
             user_input=user_text,
             format_instructions=format_instructions,
-            rag_results=rag_results
+            section_key=seccion,
+            rag_results=rag_results,
+            section_specific_instructions=refined_section_instruction
         )
         # Aquí, structured_data vendría del output de GeneratorA, pero para el prompt_b
         # en este punto del flujo, aún no lo tenemos. Se pasará en el siguiente paso.
         prompt_b = prompt_manager.build_prompt_b(
-            user_input=user_text,
-            format_instructions="", # No se usa para prompt B directamente
-            rag_results=rag_results
+            structured_data={} # Se inicializa vacío, se llenará después
         )
         return {"prompt_a": prompt_a, "prompt_b": prompt_b}
 
     # Añadir nodos
     graph.add_node("retriever", retriever.ainvoke)
+    graph.add_node("prompt_refiner", prompt_refiner_node)
     graph.add_node("prompt_manager", prompt_manager_node)
     graph.add_node("generator_a", generator_a.ainvoke)
     graph.add_node("validator_a", validator_a.ainvoke)
@@ -81,7 +105,8 @@ def build_orchestrator(debug_mode: bool = False):
 
     # Conexiones del flujo
     graph.add_edge(START, "retriever")
-    graph.add_edge("retriever", "prompt_manager")
+    graph.add_edge("retriever", "prompt_refiner")
+    graph.add_edge("prompt_refiner", "prompt_manager")
     graph.add_edge("prompt_manager", "generator_a")
     graph.add_edge("generator_a", "validator_a")
     graph.add_edge("validator_a", "generator_b")
