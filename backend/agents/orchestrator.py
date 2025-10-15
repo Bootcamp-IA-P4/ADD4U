@@ -1,6 +1,7 @@
 """
-Orquestador principal de Mini-CELIA
-Versión actual: funcional con agentes stub (usa .ainvoke)
+Orchestrator (instrumentado)
+----------------------------
+Flujo LangGraph completo con trazabilidad LangFuse (contextual) y persistencia Mongo.
 """
 
 from langgraph.graph import StateGraph, START, END
@@ -12,9 +13,12 @@ from backend.agents.validator import ValidatorAgent
 from backend.agents.generators.generator_a import GeneratorA
 from backend.agents.generators.generator_b import GeneratorB
 from backend.prompts.jn_prompts import prompt_a_template, prompt_b_template, PROMPT_PARSER_SLOTS_JN
+from backend.database.outputs_repository import save_output
+from backend.core.langfuse_client import langfuse
+
 
 # ============================================================
-# 🔹 1. Definición del esquema de estado
+#    1. Estado compartido del grafo
 # ============================================================
 class OrchestratorState(TypedDict, total=False):
     expediente_id: str
@@ -30,15 +34,16 @@ class OrchestratorState(TypedDict, total=False):
     json_b: dict
     validation_result: str
 
+
 # ============================================================
-# 🔹 2. Grafo funcional con agentes stub y generadores reales
+#   2. Funciones observables (LangFuse)
 # ============================================================
-def build_orchestrator(debug_mode: bool = False):
-    """
-    Construye el grafo LangGraph que conecta los agentes.
-    Versión de desarrollo: usa .ainvoke para compatibilidad con stubs.
-    """
-    graph = StateGraph(OrchestratorState) 
+async def retriever_node(state: OrchestratorState):
+    with langfuse.start_as_current_span(name="retriever_node"):
+        agent = RetrieverAgent()
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
 
     # Instancias de agentes
     retriever = RetrieverAgent()
@@ -49,8 +54,12 @@ def build_orchestrator(debug_mode: bool = False):
     generator_b = GeneratorB()
     validator_b = ValidatorAgent(mode="narrativa")
 
-    generator_b = GeneratorB()
-    validator_b = ValidatorAgent(mode="narrativa")
+async def prompt_manager_node(state: OrchestratorState):
+    with langfuse.start_as_current_span(name="prompt_manager_node"):
+        agent = PromptManager()
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
 
     # Definir el nodo prompt_refiner_node
     async def prompt_refiner_node(state: OrchestratorState) -> OrchestratorState:
@@ -97,13 +106,72 @@ def build_orchestrator(debug_mode: bool = False):
     # Añadir nodos
     graph.add_node("retriever", retriever.ainvoke)
     graph.add_node("prompt_refiner", prompt_refiner_node)
-    graph.add_node("prompt_manager", prompt_manager_node)
-    graph.add_node("generator_a", generator_a.ainvoke)
-    graph.add_node("validator_a", validator_a.ainvoke)
-    graph.add_node("generator_b", generator_b.ainvoke)
-    graph.add_node("validator_b", validator_b.ainvoke)
 
-    # Conexiones del flujo
+async def generator_a_node(state: OrchestratorState):
+    with langfuse.start_as_current_span(name="generator_a_node"):
+        agent = GeneratorA()
+        result = await agent.ainvoke(state)
+        state.update(result)
+
+        # Guardar JSON_A en Mongo
+        if "json_a" in result:
+            await save_output(
+                state["expediente_id"],
+                state["documento"],
+                state["seccion"],
+                "A",
+                result["json_a"],
+            )
+        return state
+
+
+async def validator_a_node(state: OrchestratorState):
+    with langfuse.start_as_current_span(name="validator_a_node"):
+        agent = ValidatorAgent(mode="estructurado")
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
+
+
+async def generator_b_node(state: OrchestratorState):
+    with langfuse.start_as_current_span(name="generator_b_node"):
+        agent = GeneratorB()
+        result = await agent.ainvoke(state)
+        state.update(result)
+
+        # Guardar JSON_B + métricas en Mongo
+        if "json_b" in result:
+            await save_output(
+                state["expediente_id"],
+                state["documento"],
+                state["seccion"],
+                "B",
+                result["json_b"],
+            )
+        return state
+
+
+async def validator_b_node(state: OrchestratorState):
+    with langfuse.start_as_current_span(name="validator_b_node"):
+        agent = ValidatorAgent(mode="narrativa")
+        result = await agent.ainvoke(state)
+        state.update(result)
+        return state
+
+
+# ============================================================
+#    3. Construcción del grafo LangGraph
+# ============================================================
+def build_orchestrator():
+    graph = StateGraph(OrchestratorState)
+
+    graph.add_node("retriever", retriever_node)
+    graph.add_node("prompt_manager", prompt_manager_node)
+    graph.add_node("generator_a", generator_a_node)
+    graph.add_node("validator_a", validator_a_node)
+    graph.add_node("generator_b", generator_b_node)
+    graph.add_node("validator_b", validator_b_node)
+
     graph.add_edge(START, "retriever")
     graph.add_edge("retriever", "prompt_refiner")
     graph.add_edge("prompt_refiner", "prompt_manager")
@@ -113,9 +181,7 @@ def build_orchestrator(debug_mode: bool = False):
     graph.add_edge("generator_b", "validator_b")
     graph.add_edge("validator_b", END)
 
-    # Compilar el grafo
     return graph.compile()
-
 
 
 # ============================================================
@@ -147,12 +213,13 @@ def build_orchestrator():
     return graph.compile()
 """
 
+
 # ============================================================
 # 🔍 Notas
 # ============================================================
-# - La versión actual (.ainvoke) permite probar el grafo aunque los agentes
-#   no estén implementados todavía.
-# - La versión futura (.as_node) se activará cuando todos los agentes
-#   sean compatibles con LangGraph o LangChain.
-# - El orden de los nodos refleja el flujo JN.x:
-#   Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
+# - LangFuse ahora usa context managers (`with langfuse.start_as_current_span`)
+#   para registrar cada nodo sin romper la asincronía.
+# - Cada ejecución se traza correctamente en LangFuse Cloud.
+# - El flujo LangGraph se mantiene idéntico.
+# - La versión futura (.as_node) se usará cuando todos los agentes sean nativos.
+# - Orden del flujo: Retriever → Prompt → GeneratorA → ValidatorA → GeneratorB → ValidatorB → END
