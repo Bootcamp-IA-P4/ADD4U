@@ -1,0 +1,1019 @@
+INTRODUCCIÓN
+Las plantillas y el binder adjuntos describen qué debe hacer el modelo en cada
+punto/paso del flujo (por ejemplo, generar un JSON A con ciertos campos, o
+redactar una narrativa B respetando unas reglas), pero no imponen ninguna
+estructura de implementación en términos de agentes o nodos. Es decir:
+
+   ➢ Las entradas como data_schema_json, dependencias_sugeridas_array,
+     nota_foco_seccion, etc., indican los datos que necesita cada prompt y las
+     reglas a seguir, pero no dicen cuántos componentes software deben
+     intervenir ni cómo se deben repartir las responsabilidades.
+   ➢ El uso de un orquestador con agentes especializados es una decisión de
+     diseño en la que se puede ganar modularidad y escalabilidad. Sin embargo,
+     podríamos emplear exactamente las mismas plantillas A/B y el mismo
+     binder en un sistema monolítico con un único agente o en un servicio
+     clásico que simplemente encadena funciones: los prompts seguirían
+     funcionando igual porque definen requisitos de entrada y salida, no la
+     arquitectura.
+
+Respuesta a la pregunta de César, sobre la confusión sobre el uso de
+nodo o Prompt:
+
+   •   Prompts A/B → mensajes que se envían al LLM para obtener JSON A (datos
+       estructurados) o JSON B (narrativa).
+   •   Resto de funcionalidades → operaciones no conversacionales que se
+       desarrollan en código o en otros agentes.
+
+En minicelia.
+
+El orquestador utiliza prompts cada vez que necesita interactuar con el modelo de
+lenguaje, no sólo para el parseado inicial. Concretametne:
+
+   ➢ Usa un prompt de parseado a slots para convertir las respuestas en lenguaje
+     natural del usuario en un primer JSON con campos y la lista de faltantes.
+   ➢ Opcionalmente usa un prompt de sugerencias/ideas si desea enriquecer esos
+     slots con aclaraciones.
+   ➢ Usa el PROMPT A para generar el JSON A completo a partir de los slots
+     confirmados, los bloques golden y las reglas de la sección.
+   ➢ Usa el PROMPT B para generar la narrativa (JSON B) a partir del JSON A ya
+     validado y los hallazgos de cumplimiento.
+
+Cada una de estas interacciones devuelve un objeto estructurado (JSON o lista)
+que el orquestador guarda en su estado y envía a los siguientes agentes:
+   ➢ El resultado del parseado se reenvía al agente de UI si hay faltantes, para
+     repreguntar al usuario.
+   ➢ El JSON A se envía al validador/normalizador y, si procede, al agente de
+     cumplimiento.
+   ➢ El JSON B se envía al revisor humano y, una vez aceptado, al agente de
+     persistencia.
+
+
+
+Los demás nodos (UI, validador, cumplimiento, persistencia) no reciben el prompt
+desde el orquestador; únicamente reciben el output producido por el LLM (los
+slots, el JSON A o el JSON B). Mi duda es siempre como hacer un agente flexible,
+que para minicelia seria el que no haya que cambiar el código, si llevamos la
+aplicación a otra admisnitración . Lo que entendí sugirieron César y Triana era
+implementar parte de la funcionalidad (la invariante, la que no cambia con las
+administraciones) en el código y dejar las reglas complejas (dependientes de
+muchas variables o reglas subjetivas) para el LLM
+
+
+
+
+Con los PROMPTS BASE y el BINDER. GPT hizo la
+segmentación de PROMPTS (instrucciones) para
+cada nodo
+Si es posible hacerlo de manera sencilla, la aplicación sería facilemtne
+mantenible, ya que el versionado de prompts y datos de entrada podría estar en 2
+ficheros no muy grandes.
+
+   A) Plantillas base (canónicas)
+
+PROMPT_A_TEMPLATE   (global, sin sección)
+[ROLE/SYSTEM]
+Eres un generador de datos estructurados para pliegos públicos. Tu
+salida DEBE ser JSON válido UTF-8 y AJUSTARSE al SCHEMA.
+No expliques tu razonamiento. No añadas texto fuera del JSON. Si
+faltan datos, rellena "faltantes" y deja "data" solo con lo validado.
+
+[CONTEXT]
+- Expediente: {{expediente_id}}
+- Documento: JN
+- Sección: {{seccion}}   // p.ej., JN.1 … JN.8
+- Slots confirmados (UI→OR): {{slots_confirmados_json}}
+- Ideas aceptadas (si existen): {{ideas_aceptadas_json}}
+- Bloques golden aplicables (id, versión, fragmentos):
+{{bloques_golden_json}}
+- Normativa relevante (si procede): {{citas_normativas_json}}
+- Metadatos de formato/locale (opcional): {{locale_meta_json}}
+
+[SCHEMA]
+Debes devolver EXACTAMENTE un objeto JSON con esta forma:
+{
+  "schema_version": "1.0.0",
+  "doc": "JN",
+  "seccion": "{{seccion}}",
+  "expediente_id": "{{expediente_id}}",
+  "nodo": "A",
+  "version": 1,
+  "timestamp": "{{iso8601_utc_now}}",
+  "actor": "G",
+  "proveniencia": "A(JSON) desde UI+Golden",
+  "hash_prev": "{{hash_prev}}",
+  "hash": "{{hash_placeholder}}",
+
+    "data": {{data_schema_json}},
+
+    "citas_golden": [ /* {id,version,repo} usados realmente */ ],
+    "citas_normativas": [ /* opcional, si aplica a la sección */ ],
+
+  "faltantes": [ /* si falta info: [{id,tipo,por_que,nodo_origen:"A"}]
+*/ ],
+  "alertas": [],
+
+    "dependencias": {{dependencias_sugeridas_array}},
+
+    "score_local": { "estructura": 0, "cumplimiento": 0, "narrativa": 0
+}
+}
+
+[REGLAS]
+- Tipos válidos: number, integer, string, boolean, date(YYYY-MM-DD),
+currency(EUR). Redondeo financiero a 2 decimales.
+- No inventes datos críticos: si no están en slots/ideas/golden,
+márcalos en "faltantes".
+- Normaliza unidades/moneda (EUR, %). Recorta espacios en strings. Sin
+texto de relleno.
+- No agregues claves fuera de {{data_schema_json}}. Elimina cualquier
+campo desconocido.
+- Listas (JN.3, JN.4, JN.7, JN.8): deben tener ≥1 elemento o marcar
+faltante.
+- JN.5: `tipo_contrato` ∈ {suministro, servicio, obra}.
+- JN.6: `pbl_base` ≥ 0; `iva_tipo` en [0,21].
+- JN.7: `plazo_meses` ≥ 1; cada `hitos[].mes` ∈ [1, plazo_meses].
+`hito_id` no duplicado.
+- JN.3: `objetivo_id` no duplicado.
+- "dependencias": sugerencias opcionales; OR/EC podrán sobrescribir.
+
+[OUTPUT]
+Devuelve SOLO el objeto JSON.
+
+PROMPT_B_TEMPLATE   (global, sin sección)
+[ROLE/SYSTEM]
+Eres un redactor técnico-administrativo. Devuelve un objeto JSON con
+la narrativa final.
+No incluyas explicaciones fuera del JSON. Respeta las opciones de
+render.
+[CONTEXT]
+- Expediente: {{expediente_id}}
+- Documento/Sección: JN / {{seccion}}
+- JSON A validado (completo): {{json_A_validado}}
+- Hallazgos de cumplimiento (CN): {{cn_findings_json}}
+- Citas golden y normativas aplicadas: {{refs_json}}
+- Dependencias conocidas: []
+- Nota de foco de la sección: {{nota_foco_seccion}}    // guía breve
+del contenido específico
+
+[RENDER_OPTIONS]
+{
+  "modo": "{{modo}}",                   // con_titulos |
+golden_compacto | continuo
+  "estilo_listas": "{{estilo_listas}}", // parrafos | viñetas
+  "marcadores_visibles": {{marcadores_visibles_bool}},
+  "tono": "{{tono}}",                   // administrativo neutro (por
+defecto)
+  "max_chars": {{max_chars}}            // límite blando
+}
+
+[SCHEMA]
+Debes devolver EXACTAMENTE un objeto JSON con esta forma:
+{
+  "schema_version": "1.0.0",
+  "doc": "JN",
+  "seccion": "{{seccion}}",
+  "expediente_id": "{{expediente_id}}",
+  "nodo": "B",
+  "version": 1,
+  "timestamp": "{{iso8601_utc_now}}",
+  "actor": "G",
+  "proveniencia": "B(narrativa) a partir de JSON A validado",
+  "hash_prev": "{{hash_prev}}",
+  "hash": "{{hash_placeholder}}",
+
+  "refs": {
+     "hash_json_A": "{{hash_json_A}}",
+     "citas_golden": [ /* {id,version,repo} usados realmente (copiados
+desde A) */ ],
+     "citas_normativas": [ /* {norma,art,seccion?} */ ],
+     "dependencias": []
+  },
+
+  "render_options": {
+     "modo": "{{modo}}",
+     "estilo_listas": "{{estilo_listas}}",
+     "marcadores_visibles": {{marcadores_visibles_bool}},
+     "tono": "{{tono}}",
+     "max_chars": {{max_chars}}
+  },
+
+  "narrativa": {
+     "outline": [ /* H1/H2… según modo; ver 'outline_sugerido' de la
+sección */ ],
+     "texto": "string (resultado final listo para incrustar)",
+     "placeholders": [ /* opcional: tablas/figuras a insertar en EN */
+]
+  },
+    "calidad": {
+       "score_local": { "narrativa": 0.0 },
+       "warnings": [ /* mensajes no bloqueantes */ ]
+    },
+
+    "control_llm": {
+      "model": "GPT-5",
+      "temperature": {{temperature}},
+      "tokens_prompt": 0,
+      "tokens_completion": 0,
+      "stop_reason": "stop|length"
+    }
+}
+
+[REGLAS]
+- La narrativa debe ser fiel a "json_A_validado"; no introduzcas
+nuevos compromisos ni cifras no presentes.
+- Integra los hallazgos CN si afectan texto obligatorio.
+- Mantén el tono administrativo; evita florituras.
+- Respeta "max_chars" (si necesitas, prioriza requisitos y
+aceptación).
+- Si "estilo_listas" = "viñetas", usa frases cortas y coherentes.
+- Sin marcas internas del LLM ni notas al pie ajenas al documento.
+
+[OUTPUT]
+Devuelve SOLO el objeto JSON.
+
+
+B) Binder por sección (schemas UI + inyecciones por JN.x)
+
+Cómo componer
+
+     •   Para A: toma PROMPT_A_TEMPLATE e inyecta: seccion, data_schema_json,
+         dependencias_sugeridas_array.
+     •   Para B: toma PROMPT_B_TEMPLATE e inyecta: seccion, nota_foco_seccion,
+         outline_sugerido   (se usa para narrativa.outline), y tus RENDER_OPTIONS.
+
+
+
+{
+  "library_version": "1.0.0",
+  "locale_defaults": { "locale": "es-ES", "currency": "EUR" },
+  "sections": {
+    "JN.1": {
+      "titulo": "Objeto y alcance",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "objeto": { "type": "string", "description": "Qué se contrata (objeto
+principal)." },
+          "alcance_resumido": { "type": "string", "description": "Qué cubre y qué
+excluye, en breve." },
+          "ambito": { "type": "string", "description": "Ámbito organizativo/territorial
+de aplicación." }
+        },
+        "required": ["objeto", "alcance_resumido", "ambito"]
+      },
+      "data_schema_json": {
+        "objeto": "string",
+        "alcance_resumido": "string",
+        "ambito": "string"
+      },
+      "dependencias_sugeridas_array": ["JN.1↔JN.3", "JN.1↔JN.5"],
+      "nota_foco_seccion": "Cubre explícitamente: objeto, alcance y ámbito de
+aplicación.",
+      "outline_sugerido": ["Objeto del contrato", "Alcance", "Ámbito de aplicación"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "parrafos",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 2000,
+"temperature": 0.2 }
+    },
+    "JN.2": {
+      "titulo": "Contexto y problema",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "contexto": { "type": "string", "description": "Antecedentes y marco
+institucional." },
+          "dolor_actual": { "type": "string", "description": "Problema/necesidad
+actual." },
+          "impacto": { "type": "string", "description": "Consecuencias de no actuar." }
+        },
+        "required": ["contexto", "dolor_actual", "impacto"]
+      },
+      "data_schema_json": {
+        "contexto": "string",
+        "dolor_actual": "string",
+        "impacto": "string"
+      },
+      "dependencias_sugeridas_array": ["JN.2→JN.3", "JN.2↔JN.4"],
+      "nota_foco_seccion": "Expón el contexto, el problema actual y su impacto.",
+      "outline_sugerido": ["Contexto", "Problema detectado", "Impacto"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "parrafos",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 2000,
+"temperature": 0.2 }
+    },
+    "JN.3": {
+      "titulo": "Objetivos",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "objetivos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "objetivo_id": { "type": "string", "description": "Identificador único."
+},
+                "descripcion": { "type": "string", "description": "Qué se quiere
+conseguir." },
+                "indicador_exito": { "type": "string", "description": "Cómo se medirá el
+cumplimiento." }
+              },
+              "required": ["objetivo_id", "descripcion", "indicador_exito"]
+            },
+            "description": "Lista de objetivos (IDs no duplicados)."
+          }
+        },
+        "required": ["objetivos"]
+      },
+      "data_schema_json": {
+        "objetivos": [
+          {
+            "objetivo_id": "string",
+            "descripcion": "string",
+            "indicador_exito": "string"
+          }
+        ]
+      },
+      "dependencias_sugeridas_array": ["JN.1↔JN.3", "JN.3↔JN.7"],
+      "nota_foco_seccion": "Enumera objetivos claros y medibles; respeta unicidad de
+objetivo_id.",
+      "outline_sugerido": ["Objetivos del proyecto", "Indicadores de éxito"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "viñetas",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 2200,
+"temperature": 0.2 }
+    },
+    "JN.4": {
+      "titulo": "Alternativas consideradas",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "alternativas": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "pros": { "type": "string", "description": "Ventajas principales." },
+                "contras": { "type": "string", "description":
+"Limitaciones/Desventajas." },
+                "motivo_descarte": { "type": "string", "description": "Razón por la que
+no se adopta." }
+              },
+              "required": ["pros", "contras", "motivo_descarte"]
+            },
+            "description": "Listado de alternativas evaluadas."
+          }
+        },
+        "required": ["alternativas"]
+      },
+      "data_schema_json": {
+        "alternativas": [
+          {
+            "pros": "string",
+            "contras": "string",
+            "motivo_descarte": "string"
+          }
+        ]
+      },
+      "dependencias_sugeridas_array": ["JN.2↔JN.4", "JN.4→JN.5", "JN.4→JN.6"],
+      "nota_foco_seccion": "Resume alternativas, sus pros/contras y el motivo de
+descarte.",
+      "outline_sugerido": ["Alternativas analizadas", "Pros y contras", "Motivo del
+descarte"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "parrafos",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 2200,
+"temperature": 0.2 }
+    },
+    "JN.5": {
+      "titulo": "Tipo de contrato y procedimiento",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "tipo_contrato": { "type": "string", "enum": ["suministro", "servicio",
+"obra"], "description": "Clasificación del contrato." },
+          "procedimiento_sugerido": { "type": "string", "description": "Procedimiento
+propuesto y breve justificación." }
+        },
+        "required": ["tipo_contrato", "procedimiento_sugerido"]
+      },
+      "data_schema_json": {
+        "tipo_contrato": "suministro|servicio|obra",
+        "procedimiento_sugerido": "string"
+      },
+      "dependencias_sugeridas_array": ["JN.4→JN.5", "JN.5↔JN.6"],
+      "nota_foco_seccion": "Indica el tipo de contrato (enum) y el procedimiento
+sugerido con síntesis de justificación.",
+      "outline_sugerido": ["Tipo de contrato", "Procedimiento sugerido"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "parrafos",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 1800,
+"temperature": 0.2 }
+    },
+    "JN.6": {
+      "titulo": "Presupuesto y financiación",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "pbl_base": { "type": "number", "minimum": 0, "description": "Presupuesto base
+de licitación (sin IVA), EUR." },
+          "iva_tipo": { "type": "number", "minimum": 0, "maximum": 21, "description":
+"Tipo de IVA aplicable (0–21)." },
+          "financiacion_ue": { "type": "boolean", "description": "Si hay financiación
+UE." }
+        },
+        "required": ["pbl_base", "iva_tipo", "financiacion_ue"]
+      },
+      "data_schema_json": {
+        "pbl_base": "currency(EUR)",
+        "iva_tipo": "number",
+        "financiacion_ue": "boolean"
+      },
+      "dependencias_sugeridas_array": ["JN.4→JN.6", "JN.5↔JN.6", "JN.6→JN.7"],
+      "nota_foco_seccion": "Expón PBL (EUR, sin IVA), tipo de IVA y si existe
+financiación UE.",
+      "outline_sugerido": ["Presupuesto base de licitación (PBL)", "IVA aplicable",
+"Financiación"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "parrafos",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 1800,
+"temperature": 0.2 }
+    },
+    "JN.7": {
+      "titulo": "Plazo y hitos",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "plazo_meses": { "type": "integer", "minimum": 1, "description": "Duración
+total en meses (≥1)." },
+          "hitos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "hito_id": { "type": "string", "description": "Identificador único del
+hito." },
+                "nombre": { "type": "string", "description": "Nombre del hito." },
+                "mes": { "type": "integer", "minimum": 1, "description": "Mes dentro del
+plazo (1..plazo_meses)." }
+              },
+              "required": ["hito_id", "nombre", "mes"]
+            },
+            "description": "Cronograma de hitos (IDs no duplicados)."
+          }
+        },
+        "required": ["plazo_meses", "hitos"]
+      },
+      "data_schema_json": {
+        "plazo_meses": "integer",
+        "hitos": [
+          {
+            "hito_id": "string",
+            "nombre": "string",
+            "mes": "integer"
+          }
+        ]
+      },
+      "dependencias_sugeridas_array": ["JN.3↔JN.7", "JN.6→JN.7", "JN.7→JN.8"],
+      "nota_foco_seccion": "Detalla plazo total e hitos; valida que cada mes esté en
+rango y que hito_id no se repita.",
+      "outline_sugerido": ["Plazo de ejecución", "Hitos y cronograma"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "viñetas",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 2200,
+"temperature": 0.2 }
+    },
+    "JN.8": {
+      "titulo": "Riesgos y mitigación",
+      "inputs_schema": {
+        "type": "object",
+        "properties": {
+          "riesgos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "prob": { "type": "number", "minimum": 0, "maximum": 100, "description":
+"Probabilidad (0–100%)." },
+                "impacto": { "type": "number", "minimum": 0, "maximum": 100,
+"description": "Impacto (0–100%)." },
+                "mitigacion": { "type": "string", "description": "Medida
+preventiva/contingencia." }
+              },
+              "required": ["prob", "impacto", "mitigacion"]
+             },
+             "description": "Matriz de riesgos (prob/impacto %)."
+          }
+        },
+        "required": ["riesgos"]
+      },
+      "data_schema_json": {
+        "riesgos": [
+          {
+            "prob": "number",
+            "impacto": "number",
+            "mitigacion": "string"
+          }
+        ]
+      },
+      "dependencias_sugeridas_array": ["JN.7→JN.8", "JN.3↔JN.8"],
+      "nota_foco_seccion": "Enumera riesgos con probabilidad/impacto en %, y medidas de
+mitigación.",
+      "outline_sugerido": ["Riesgos identificados", "Medidas de mitigación"],
+      "render_defaults": { "modo": "con_titulos", "estilo_listas": "viñetas",
+"marcadores_visibles": false, "tono": "administrativo neutro", "max_chars": 2000,
+"temperature": 0.2 }
+    }
+  }
+}
+
+
+
+
+Generación dinámica de Prompts a aprtir de las
+plantillas
+La idea sería poder generar dinamicamente, estos prompts a partir de las
+Plantillas de Prompts y el Binder (esta generación dinámica sería una parte del
+código asociada a, por ejemplo un nodo de enrutado en ese orquestador)
+
+1) Prompt del Parser de slots (OR→G)
+
+ID: PROMPT_PARSER_SLOTS_JN (genérico para todas las secciones)
+
+[ROLE/SYSTEM]
+
+Eres un parser de slots para el documento JN. Extrae valores de campos definidos y
+devuélvelos en "slots". Si faltan, enuméralos en "faltantes". Devuelve SOLO JSON válido UTF-8.
+
+[CONTEXT]
+
+- Expediente: {{expediente_id}}
+
+- Documento: JN
+
+- Sección: {{seccion}}
+
+- Texto del usuario (bruto):
+
+"""
+
+{{texto_usuario}}
+
+"""
+
+- Esquema de datos (data_schema_json) de la sección:
+{{data_schema_json}}
+
+
+
+[SCHEMA]
+
+{
+
+    "slots": { /* subobjeto con las claves del data_schema_json presentes */ },
+
+    "faltantes": [ /* nombres de campos ausentes o vacíos */ ]
+
+}
+
+
+
+[REGLAS]
+
+- No inventes ni normalices semánticamente; extrae lo que aparece.
+
+- Para listas, construye elementos completos cuando sea claro; si no, marca faltantes.
+
+- No añadas claves fuera de "slots" y "faltantes".
+
+
+
+[OUTPUT]
+
+Devuelve SOLO el objeto JSON con "slots" y "faltantes".
+
+
+
+2) Prompt de Ideas opcionales (OR→G)
+
+
+ID: PROMPT_IDEAS_JN (genérico)
+
+[ROLE/SYSTEM]
+
+Eres un generador de ideas para completar/aclarar datos de la sección JN.x. Propón
+sugerencias NUMERADAS que el usuario pueda aceptar/descartar.
+
+
+
+[CONTEXT]
+
+- Expediente: {{expediente_id}}
+
+- Sección: {{seccion}}
+
+- Slots actuales: {{slots_json}}
+
+- data_schema_json: {{data_schema_json}}
+
+- (Opcional) Golden aplicable: {{kb_seleccion_json}}
+[SCHEMA]
+
+[
+
+    { "id": "IDEA-1", "propuesta": "string breve", "por_qué": "razón", "slot_target": "ruta.en.data"
+}
+
+]
+
+
+
+[REGLAS]
+
+- Propón SOLO si aporta claridad/completitud; 3–7 ideas máx.
+
+- No introduzcas cifras/compromisos críticos sin fuente; si los sugieres, indicarlo como
+"requiere confirmación".
+
+- No escribas nada fuera del JSON.
+
+
+
+[OUTPUT]
+
+Devuelve SOLO el array JSON de ideas.
+
+
+
+
+PROMPTS DE GOLDEN (KB), VALIDACIÓN(VL) y
+Cumplimentador
+Estos tres prompts son genéricos para cualquier sección JN.x y se integran en la
+secuencia así:
+
+       •   KB: antes de PROMPT_A (inyecta ideas/hints y plantillas).
+       •   VL: después de PROMPT_A (devuelve faltantes/alertas/autofix).
+       •   CN: después de VL (devuelve citas, textos obligatorios para B y slots
+           obligatorios futuros).
+
+
+
+1) Prompt de Golden (KB)
+
+ID: PROMPT_KB_JN
+
+Entradas: golden_registry_json, slots_confirmados_json,
+project_tags_array?, ledger_resumen_json?.
+
+       •   Salida: {seleccion[], hints_A[], plantillas_B[], cobertura[],
+           warnings[]}.
+Regla de orquestación: OR pasa kb_hints_A_json y kb_plantillas_B_json a A y B
+respectivamente. A no completa data con hints no confirmados; si implican datos nuevos, se
+marcan en faltantes.
+
+
+
+[ROLE/SYSTEM]
+
+Eres un selector y sintetizador de bloques GOLDEN. Debes elegir, a partir de un catálogo
+dado, los bloques aplicables a la sección y devolver hints para A y plantillas para B.
+
+No inventes bloques ni normativa; trabaja SOLO con el catálogo proporcionado.
+
+
+
+[CONTEXT]
+
+- Expediente: {{expediente_id}}
+
+- Documento: JN
+
+- Sección: {{seccion}}          // p.ej., JN.1 … JN.8
+
+- Slots actuales (UI→OR): {{slots_confirmados_json}}
+
+- Etiquetas del proyecto (opcional): {{project_tags_array}}
+
+- Catálogo GOLDEN disponible: {{golden_registry_json}} //
+[{id,seccion,version,repo,aplica_si,hints_A[],plantillas_B[],coverage}]
+
+- Historial previo (opcional): {{ledger_resumen_json}}
+
+
+
+[SCHEMA]
+
+Debes devolver EXACTAMENTE un objeto JSON con esta forma:
+
+{
+
+    "schema_version": "1.0.0",
+
+    "doc": "JN",
+
+    "seccion": "{{seccion}}",
+
+    "expediente_id": "{{expediente_id}}",
+
+    "nodo": "KB",
+
+    "version": 1,
+
+    "timestamp": "{{iso8601_utc_now}}",
+
+    "actor": "G",
+
+    "proveniencia": "KB(golden) desde catálogo",
+    "hash_prev": "{{hash_prev}}",
+
+    "hash": "{{hash_placeholder}}",
+
+
+
+    "seleccion": [ { "id": "", "version": "", "repo": "", "por_que": "" } ],
+
+    "hints_A": [ { "id": "", "slot_target": "", "patch": "", "por_que": "" } ],
+
+    "plantillas_B": [ { "id": "", "modo": "", "texto": "", "variables": [] } ],
+
+    "cobertura": [ "tema1", "tema2" ],
+
+    "warnings": []
+
+}
+
+
+
+[REGLAS]
+
+- Evalúa `aplica_si` de cada bloque en {{golden_registry_json}} con los datos y etiquetas
+dados.
+
+- Incluye SOLO bloques realmente aplicables; no fabriques bloques nuevos.
+
+- Los `hints_A` y `plantillas_B` deben provenir de los bloques seleccionados.
+
+- Si nada aplica, devuelve arrays vacíos.
+
+- No añadas claves fuera del SCHEMA.
+
+
+
+[OUTPUT]
+
+Devuelve SOLO el objeto JSON.
+
+
+
+
+2) Prompt de VL PROMPT_VL_JN (Validación/Normalización
+asistida)
+
+[ROLE/SYSTEM]
+
+Eres un validador/normalizador asistido. No modifiques el JSON A; propone faltantes,
+alertas y normalizaciones seguras según un conjunto de reglas declarativas.
+
+No inventes datos nuevos.
+[CONTEXT]
+
+- Expediente: {{expediente_id}}
+
+- Documento/Sección: JN / {{seccion}}
+
+- JSON A (candidato, sin validar): {{json_A}}
+
+- Reglas VL activas: {{vl_rules_json}} // [{id,tipo,campo/expr,params,severidad,on_fail}]
+
+- Metadatos de formato/locale (opcional): {{locale_meta_json}}
+
+
+
+[SCHEMA]
+
+Debes devolver EXACTAMENTE un objeto JSON con esta forma:
+
+{
+
+    "schema_version": "1.0.0",
+
+    "doc": "JN",
+
+    "seccion": "{{seccion}}",
+
+    "expediente_id": "{{expediente_id}}",
+
+    "nodo": "VL",
+
+    "version": 1,
+
+    "timestamp": "{{iso8601_utc_now}}",
+
+    "actor": "G",
+
+    "proveniencia": "VL(validación) desde reglas declarativas",
+
+    "hash_prev": "{{hash_prev}}",
+
+    "hash": "{{hash_placeholder}}",
+
+
+
+    "faltantes": [ { "id": "", "tipo": "", "por_que": "", "regla": "" } ],
+
+    "alertas": [ { "id": "", "msg": "", "severidad": "", "regla": "" } ],
+
+    "autofix_sugeridos": [ { "id": "", "campo": "", "de": "", "a": "", "regla": "" } ],
+
+    "normalizaciones": [ { "campo": "", "accion": "trim|uppercase|currency:EUR:2|..." } ],
+
+    "resumen": { "reglas_evaluadas": 0, "reglas_disparadas": 0 }
+
+}
+
+
+
+[REGLAS]
+- Evalúa EXCLUSIVAMENTE las reglas de {{vl_rules_json}}.
+
+- Si `on_fail` = "faltantes" → añade a `faltantes`.
+
+- Si `on_fail` = "alertas" → añade a `alertas`.
+
+- Si `on_fail` = "autofix" → sugiere en `autofix_sugeridos` y, si procede, añade
+`normalizaciones`.
+
+- No alteres {{json_A}}; solo devuelve propuestas de corrección/normalización.
+
+- Si no hay incidencias, devuelve arrays vacíos y `reglas_disparadas = 0`.
+
+- No añadas claves fuera del SCHEMA.
+
+
+
+[OUTPUT]
+
+Devuelve SOLO el objeto JSON.
+
+
+
+3) PROMPT de CN.
+PROMPT_CN_JN (Cumplimiento normativo con policy pack)
+
+[ROLE/SYSTEM]
+
+Eres un evaluador de cumplimiento. Selecciona obligaciones, citas normativas y textos
+obligatorios SOLO a partir del pack de políticas proporcionado.
+
+No inventes normas ni redactes obligaciones no contempladas en el pack.
+
+
+
+[CONTEXT]
+
+- Expediente: {{expediente_id}}
+
+- Documento/Sección: JN / {{seccion}}
+
+- JSON A validado (VL OK): {{json_A_validado}}
+
+- Pack normativo disponible: {{cn_policy_pack}} //
+[{id,when,exige:{citas_normativas[],texto_obligatorio_B{seccion,texto},slots_A_obligatorio
+s[]},severidad}]
+
+- Golden seleccionado (opcional): {{golden_seleccion_json}}
+
+- Resumen JN ya validado (opcional): {{resumen_JN_json}}
+
+
+
+[SCHEMA]
+Debes devolver EXACTAMENTE un objeto JSON con esta forma:
+
+{
+
+    "schema_version": "1.0.0",
+
+    "doc": "JN",
+
+    "seccion": "{{seccion}}",
+
+    "expediente_id": "{{expediente_id}}",
+
+    "nodo": "CN",
+
+    "version": 1,
+
+    "timestamp": "{{iso8601_utc_now}}",
+
+    "actor": "G",
+
+    "proveniencia": "CN(cumplimiento) desde policy pack",
+
+    "hash_prev": "{{hash_prev}}",
+
+    "hash": "{{hash_placeholder}}",
+
+
+
+    "citas_normativas": [ { "norma": "", "ref": "", "regla": "" } ],
+
+    "bloques_texto_obligatorio_B": [ { "seccion": "", "id": "", "texto": "", "regla": "" } ],
+
+    "slots_A_obligatorios": [ { "seccion_destino": "", "id": "", "regla": "" } ],
+
+    "warnings": [ { "id": "", "msg": "" } ]
+
+}
+
+
+
+[REGLAS]
+
+- Activa SOLO las reglas de {{cn_policy_pack}} cuyo `when` sea verdadero con
+{{json_A_validado}} (y, si se aporta, {{resumen_JN_json}}).
+
+- No generes normativa ni textos fuera del pack.
+
+- Si se requieren campos en otras secciones/documentos, añádelos a
+`slots_A_obligatorios`.
+
+- Si no hay obligaciones aplicables, devuelve arrays vacíos.
+
+- No añadas claves fuera del SCHEMA.
+
+
+
+[OUTPUT]
+Devuelve SOLO el objeto JSON.
+
+
+
+Mapa de la secuencia y prompts involucrados
+
+Nota: JN.x ∈ {JN.1 … JN.8}. La misma secuencia se aplica por sección.
+
+
+
+     Paso       Nodo          Prompt ID          Entradas clave (OR → prompt)          Salida
+ 1            OR→U      (sin LLM)             sections[JN.x].inputs_sche        slots_confirmados_
+              I                               ma                                json
+ 2            OR→G      PROMPT_PARSER         expediente_id, seccion,           {slots, faltantes}
+                        _SLOTS_JN             texto_usuario,
+                                              sections[JN.x].data_schema
+                                              _json
+ 3 (opt)      OR→G      PROMPT_IDEAS_         slots, data_schema_json,          ideas[{id,propuest
+                        JN                    golden?                           a,por_qué,slot_tar
+                                                                                get}]
+ 4            OR→K      PROMPT_KB_JN          golden_registry_json, slots,      {seleccion,
+              B         (o UI(KB))            project_tags?                     hints_A,
+                                                                                plantillas_B,
+                                                                                cobertura}
+ 5            OR→G      PROMPT_A_TEM          expediente_id, seccion,           JSON A
+                        PLATE (v1.1)          slots_confirmados_json,
+                                              ideas_aceptadas_json?,
+                                              kb_seleccion_json?,
+                                              kb_hints_A_json?,
+                                              bloques_golden_json?,
+                                              citas_normativas_json?,
+                                              sections[JN.x].data_schema
+                                              _json,
+                                              sections[JN.x].dependencia
+                                              s_sugeridas_array
+ 6            OR→V      PROMPT_VL_JN          json_A, vl_rules_json,            {faltantes,
+              L                               locale_meta?                      alertas,
+                                                                                autofix_sugeridos,
+                                                                                normalizaciones,
+                                                                                resumen}
+ 7 (opt)      OR→C      PROMPT_CN_JN          json_A_validado,                  {citas_normativas,
+              N         (o UI(CN))            cn_policy_pack,                   bloques_texto_obli
+                                              golden_seleccion_json?,           gatorio_B,
+                                              resumen_JN_json?                  slots_A_obligatori
+                                                                                os}
+ 8            OR→G      PROMPT_B_TEM          json_A_validado,                  JSON B (narrativa)
+                        PLATE (v1.1)          cn_findings_json,
+                                              kb_plantillas_B_json?,
+                                              refs_json,
+                                              sections[JN.x].outline_sug
+                                              erido, render_options
+ 9            OR→R      (sin LLM)             A, B, findings                    Aceptación o hints
+              H
+ 9b (si RH    OR→G      PROMPT_RE_B_J         json_B_actual, hints_RH,          JSON B actualizado
+ pide                   N                     render_options?
+ cambios
+ de estilo)
+ 9c (si RH    re-A /    (mismos prompts que   (según cambios)                   Nuevas versiones A/B
+ pide         re-VL /   5–8)
+ cambios      re-CN /
+ de           re-B
+ datos)**
+ 10           OR→E      (sin LLM)             A, B, metadatos                   Persistido
+              N
+PROPUESTA DE ARQUITECTURA PARA MINICELIA
+Acercaros en la medida de lo posible a algo así.
+
+
+
+
+Ojo que esto no es un proyecto de un mes.
+Contar vuestra propuesta con algo más de detalle y vemos como aunar criterios.
+
+Estas imágenes están en el PPT inicial, en el que os he ido pasando información.
+
