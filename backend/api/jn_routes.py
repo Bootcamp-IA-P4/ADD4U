@@ -6,7 +6,8 @@ from typing import Any, Optional, Dict
 from backend.models.schemas_jn import UserRequest, OutputJsonA, OutputJsonB, OutputJsonBRefs
 from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
-from backend.agents.jn_agent import generate_justificacion_necesidad
+from backend.agents.legacy_jn_agent import generate_justificacion_necesidad
+from backend.agents.orchestrator import build_orchestrator
 from backend.database.outputs_repository import save_output
 from backend.utils.dict_utils import to_dict_safe
 
@@ -110,3 +111,66 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar la JN: {str(e)}")
+
+
+# ============================================================
+# 🚀 NUEVO ENDPOINT CON ORQUESTADOR LANGGRAPH
+# ============================================================
+
+class GenerateJNOrchestratedRequest(BaseModel):
+    """Request para generar sección JN con orquestador LangGraph"""
+    expediente_id: str = Field(..., description="ID del expediente")
+    documento: str = Field(default="JN", description="Tipo de documento (JN, PPT, CEC, CR)")
+    seccion: str = Field(..., description="Sección a generar (JN.1, JN.2, JN.3, etc.)")
+    user_text: str = Field(..., description="Texto de entrada del usuario")
+
+
+@router.post("/generar_jn_orquestado")
+async def generar_jn_con_orquestador(request: GenerateJNOrchestratedRequest):
+    """
+    🎯 Genera una sección JN usando el orquestador LangGraph completo.
+    
+    Flujo:
+    1. Retriever → Busca contexto RAG (normativa + golden)
+    2. PromptRefiner → Refina instrucciones de la sección
+    3. PromptManager → Construye prompts A y B dinámicamente
+    4. GeneratorA → Genera JSON estructurado (JSON_A)
+    5. ValidatorA → Valida estructura y reglas
+    6. GeneratorB → Genera narrativa administrativa (JSON_B)
+    7. ValidatorB → Valida coherencia narrativa
+    8. Save → Guarda en MongoDB con trazabilidad
+    
+    Todo el flujo está instrumentado con LangFuse para observabilidad.
+    """
+    try:
+        # Construir orquestador
+        orchestrator = build_orchestrator(debug_mode=False)
+        
+        # Estado inicial
+        initial_state = {
+            "expediente_id": request.expediente_id,
+            "documento": request.documento,
+            "seccion": request.seccion,
+            "user_text": request.user_text
+        }
+        
+        # Ejecutar grafo
+        final_state = await orchestrator.ainvoke(initial_state)
+        
+        # Respuesta
+        return {
+            "success": True,
+            "expediente_id": request.expediente_id,
+            "seccion": request.seccion,
+            "json_a": final_state.get("json_a"),
+            "json_b": final_state.get("json_b"),
+            "validation_result": final_state.get("validation_result"),
+            "rag_results_count": len(final_state.get("rag_results", [])),
+            "message": f"Sección {request.seccion} generada exitosamente con orquestador LangGraph"
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error en orquestador: {str(e)}"
+        )

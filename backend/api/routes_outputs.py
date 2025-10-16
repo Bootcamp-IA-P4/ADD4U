@@ -1,6 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Body
 from backend.database.mongo import get_collection
-from backend.database.outputs_repository import save_output
+from backend.database.outputs_repository import (
+    save_output,
+    list_outputs,
+    get_latest_output,
+    update_output_state
+)
 from datetime import datetime
 
 router = APIRouter(prefix="/outputs", tags=["outputs"])
@@ -150,3 +155,107 @@ async def get_validated_jn(expediente_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error validando JN: {str(e)}")
+
+
+# ============================================================
+# 🚀 NUEVOS ENDPOINTS CON FUNCIONES DEL REPOSITORIO
+# ============================================================
+
+@router.get("/list")
+async def listar_outputs(
+    expediente_id: str | None = Query(default=None),
+    documento: str | None = Query(default=None),
+    seccion: str | None = Query(default=None),
+    nodo: str | None = Query(default=None),
+    limit: int = Query(default=100, le=500)
+):
+    """
+    📋 Lista outputs con filtros opcionales y paginación.
+    
+    Parámetros:
+    - expediente_id: Filtrar por expediente
+    - documento: Filtrar por tipo (JN, PPT, CEC, CR)
+    - seccion: Filtrar por sección (JN.1, JN.2, etc.)
+    - nodo: Filtrar por nodo (A, B, VL, CN, VALIDATED)
+    - limit: Máximo de resultados (default: 100, max: 500)
+    """
+    try:
+        docs = await list_outputs(expediente_id, documento, seccion, nodo, limit)
+        return {
+            "count": len(docs),
+            "outputs": docs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listando outputs: {str(e)}")
+
+
+@router.get("/latest/{expediente_id}/{documento}/{seccion}/{nodo}")
+async def obtener_output_mas_reciente(
+    expediente_id: str,
+    documento: str,
+    seccion: str,
+    nodo: str
+):
+    """
+    🔍 Obtiene el output más reciente para una combinación específica.
+    
+    Útil para:
+    - Recuperar última versión de JSON_A o JSON_B
+    - Verificar si una sección ya fue generada
+    - Obtener outputs previos para dependencias
+    """
+    try:
+        doc = await get_latest_output(expediente_id, documento, seccion, nodo)
+        if not doc:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se encontró output para {expediente_id}/{documento}/{seccion}/{nodo}"
+            )
+        return doc
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error obteniendo output: {str(e)}")
+
+
+@router.patch("/{output_id}/estado")
+async def actualizar_estado_output(
+    output_id: str,
+    estado: str = Body(..., embed=True)
+):
+    """
+    ✏️ Actualiza el estado de un output.
+    
+    Estados válidos:
+    - draft: Borrador inicial
+    - validated: Validado por agente
+    - approved: Aprobado por humano
+    - rejected: Rechazado
+    - final: Versión final
+    
+    Body:
+    {
+        "estado": "validated"
+    }
+    """
+    valid_states = ["draft", "validated", "approved", "rejected", "final"]
+    if estado not in valid_states:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Estado inválido. Debe ser uno de: {', '.join(valid_states)}"
+        )
+    
+    try:
+        doc = await update_output_state(output_id, estado)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Output no encontrado")
+        return {
+            "success": True,
+            "output_id": output_id,
+            "estado": estado,
+            "updated_at": doc.get("updated_at")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error actualizando estado: {str(e)}")
