@@ -6,9 +6,10 @@ from typing import Any, Optional, Dict
 from backend.models.schemas_jn import UserRequest, OutputJsonA, OutputJsonB, OutputJsonBRefs
 from backend.models.schemas_jn import UserRequest
 from backend.core.logic_jn import build_jn_output
-from backend.agents.jn_agent import generate_justificacion_necesidad
+from backend.agents.orchestrator import build_orchestrator, OrchestratorState
 from backend.database.outputs_repository import save_output
 from backend.utils.dict_utils import to_dict_safe
+from backend.core.llm_client import get_llm
 
 # Importaciones para RAG
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -62,14 +63,28 @@ async def generar_justificacion_de_la_necesidad(request: GenerateJNRequest):
         results = vectorstore.similarity_search(request.rag_query, k=3)
         rag_context_str = "\n\nContexto de Normativa Relevante:\n" + "\n---\n".join([doc.page_content for doc in results])
 
-    request.user_input.rag_context = rag_context_str
+    # Inicializar el orquestador
+    orchestrator_graph = build_orchestrator()
+
+    # Preparar el estado inicial para el orquestador
+    initial_state = OrchestratorState(
+        expediente_id=request.user_input.expediente_id,
+        documento="JN", # Asumimos que siempre es JN para este endpoint
+        seccion=request.user_input.seccion,
+        user_text=request.user_input.user_text,
+        rag_results=[{"content": rag_context_str, "type": "rag"}] if rag_context_str else [],
+        # Otros campos se irán rellenando a medida que el grafo avance
+    )
 
     try:
-        jn_output = await generate_justificacion_necesidad(
-            user_input=request.user_input,
-            structured_llm_choice=request.structured_llm_choice,
-            narrative_llm_choice=request.narrative_llm_choice,
-        )
+        # Ejecutar el orquestador
+        final_state = await orchestrator_graph.ainvoke(initial_state)
+
+        jn_output = {}
+        if "json_a" in final_state:
+            jn_output["json_a"] = final_state["json_a"]
+        if "json_b" in final_state:
+            jn_output["json_b"] = final_state["json_b"]
 
         expediente_id = request.user_input.expediente_id
         documento = "JN"

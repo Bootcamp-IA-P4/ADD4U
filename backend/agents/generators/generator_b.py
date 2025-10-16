@@ -64,8 +64,7 @@ Mantén tono administrativo neutro, evitando repeticiones y sin añadir informac
 - Usa párrafos breves y oraciones claras.
 - No repitas texto literal del JSON_A.
 - No incluyas explicaciones externas ni comentarios.
-- Devuelve SOLO el objeto JSON final (JSON_B) con claves:
-  narrativa, calidad, control_llm, etc.
+- Devuelve SOLO el objeto JSON final (JSON_B) con la clave narrativa.
 """
 
             try:
@@ -87,14 +86,6 @@ Mantén tono administrativo neutro, evitando repeticiones y sin añadir informac
                     "actor": "G",
                     "proveniencia": "B(narrativa) desde JSON_A validado",
                     "narrative_output": narrative_output,
-                    "calidad": {
-                        "score_local": metrics,
-                        "warnings": []
-                    },
-                    "metadata": {
-                        "model": self.llm.model_name,
-                        "status": "success"
-                    }
                 }
 
                 # === Registro de evaluación en TruLens ===
