@@ -16,7 +16,7 @@ class ApiService {
     // Interceptor para requests
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`)
+        console.log(`[REQ] API Request: ${config.method?.toUpperCase()} ${config.url}`)
         return config
       },
       (error) => Promise.reject(error)
@@ -25,15 +25,15 @@ class ApiService {
     // Interceptor para responses
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`✅ API Response: ${response.status} ${response.config.url}`)
+        console.log(`[OK] API Response: ${response.status} ${response.config.url}`)
         return response
       },
       (error) => {
-        console.error('❌ API Error:', error.response?.data || error.message)
+        console.error('[ERR] API Error:', error.response?.data || error.message)
         
         // Si el backend no está disponible, mostrar error específico
         if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
-          console.error('🔌 Backend not available. Make sure FastAPI is running on port 8000')
+          console.error('[CONN] Backend not available. Make sure FastAPI is running on port 8000')
         }
         
         return Promise.reject(error)
@@ -42,7 +42,7 @@ class ApiService {
   }  // Método principal: Generación de Justificación de la Necesidad
   async generateJN(userInput) {
     try {
-      console.log('📋 generateJN userInput:', userInput)
+      console.log('[DATA] generateJN userInput:', userInput)
       
       // Construir el payload exacto que espera el backend
       const body = {
@@ -55,7 +55,7 @@ class ApiService {
         narrative_llm_choice: userInput.narrative_llm_choice || 'groq'
       }
       
-      console.log('📤 Sending to backend:', body)
+      console.log('[SEND] Sending to backend:', body)
       const response = await this.client.post('/justificacion/generar_jn', body)
       
       // Formatear la respuesta para mostrar en el chat
@@ -64,7 +64,7 @@ class ApiService {
       
       return { success: true, content: formattedContent }
     } catch (error) {
-      console.error('❌ Error generating JN (real):', error)
+      console.error('[ERR] Error generating JN (real):', error)
       return {
         success: false,
         error: error.response?.data?.detail || error.message,
@@ -74,7 +74,7 @@ class ApiService {
   }
   // Formatear respuesta de JN del backend para mostrar en el chat
   formatJNResponse(jnData) {
-    console.log('🔍 Procesando respuesta del backend:', jnData)
+    console.log('[PROC] Procesando respuesta del backend:', jnData)
     
     // Extraer la narrativa limpia según la estructura de respuesta del backend
     let cleanNarrative = this.extractCleanNarrative(jnData)
@@ -112,39 +112,39 @@ ${cleanNarrative}
   }  // Extraer solo la narrativa limpia de la respuesta compleja del backend
   extractCleanNarrative(jnData) {
     try {
-      console.log('🔍 Extrayendo narrativa de:', jnData)
+      console.log('[EXTRACT] Extrayendo narrativa de:', jnData)
       
       // Caso 1: Si hay un campo 'narrativa' directo (principal según el backend)
       if (jnData.narrativa && typeof jnData.narrativa === 'string') {
-        console.log('✅ Narrativa encontrada en campo directo')
+        console.log('[OK] Narrativa encontrada en campo directo')
         return this.cleanNarrativeText(jnData.narrativa)
       }
       
       // Caso 2: Si la narrativa está en un objeto anidado
       if (jnData.data?.narrativa && typeof jnData.data.narrativa === 'string') {
-        console.log('✅ Narrativa encontrada en data.narrativa')
+        console.log('[OK] Narrativa encontrada en data.narrativa')
         return this.cleanNarrativeText(jnData.data.narrativa)
       }
       
       // Caso 3: Si hay un campo 'response' que contiene la narrativa
       if (jnData.response && typeof jnData.response === 'string') {
-        console.log('✅ Narrativa encontrada en response')
+        console.log('[OK] Narrativa encontrada en response')
         return this.cleanNarrativeText(jnData.response)
       }
       
       // Caso 4: Si está en 'content', 'text' o 'texto'
       if (jnData.content && typeof jnData.content === 'string') {
-        console.log('✅ Narrativa encontrada en content')
+        console.log('[OK] Narrativa encontrada en content')
         return this.cleanNarrativeText(jnData.content)
       }
       
       if (jnData.text && typeof jnData.text === 'string') {
-        console.log('✅ Narrativa encontrada en text')
+        console.log('[OK] Narrativa encontrada en text')
         return this.cleanNarrativeText(jnData.text)
       }
       
       if (jnData.texto && typeof jnData.texto === 'string') {
-        console.log('✅ Narrativa encontrada en texto')
+        console.log('[OK] Narrativa encontrada en texto')
         return this.cleanNarrativeText(jnData.texto)
       }
       
@@ -154,24 +154,24 @@ ${cleanNarrative}
         for (const [key, value] of Object.entries(jnData)) {
           if (typeof value === 'object' && value !== null) {
             if (value.narrativa && typeof value.narrativa === 'string') {
-              console.log(`✅ Narrativa encontrada en ${key}.narrativa`)
+              console.log(`[OK] Narrativa encontrada en ${key}.narrativa`)
               return this.cleanNarrativeText(value.narrativa)
             }
           }
           
           // Buscar en campos string largos que parezcan narrativa
           if (typeof value === 'string' && value.length > 50 && this.looksLikeNarrative(value)) {
-            console.log(`✅ Narrativa encontrada en campo '${key}'`)
+            console.log(`[OK] Narrativa encontrada en campo '${key}'`)
             return this.cleanNarrativeText(value)
           }
         }
       }
       
-      console.warn('⚠️ No se encontró narrativa en la respuesta:', Object.keys(jnData))
+      console.warn('[WARN] No se encontró narrativa en la respuesta:', Object.keys(jnData))
       return null
       
     } catch (error) {
-      console.error('❌ Error extrayendo narrativa:', error)
+      console.error('[ERR] Error extrayendo narrativa:', error)
       return null
     }
   }
@@ -212,7 +212,7 @@ ${cleanNarrative}
       return this.formatNarrativeText(text)
       
     } catch (error) {
-      console.error('❌ Error limpiando narrativa:', error)
+      console.error('[ERR] Error limpiando narrativa:', error)
       return text
     }
   }
@@ -252,7 +252,7 @@ ${cleanNarrative}
   // Chat inteligente con OpenAI (ajustado: solo usa generateJN para JN, mock para el resto)
   async chatWithBot(message, context = {}) {
     try {
-      console.log('💬 Sending message to bot:', message)
+      console.log('[CHAT] Sending message to bot:', message)
 
       // Detectar tipo de solicitud
       const requestType = this.detectRequestType(message)
@@ -263,14 +263,14 @@ ${cleanNarrative}
       }
 
       // Si solo existe el endpoint de JN en el backend, devolvemos mock local para el resto
-      console.warn('⚠️ Endpoint /chat no disponible - usando respuesta local mock para tipo:', requestType)
+      console.warn('[WARN] Endpoint /chat no disponible - usando respuesta local mock para tipo:', requestType)
       return {
         success: true,
         content: this.getMockResponse(message, context),
         type: requestType
       }
     } catch (error) {
-      console.error('❌ Error in chat:', error)
+      console.error('[ERR] Error in chat:', error)
       return {
         success: false,
         error: error.response?.data?.detail || error.message,
@@ -295,7 +295,7 @@ ${cleanNarrative}
   // Validación de cumplimiento normativo
   async validateCompliance(content) {
     try {
-      console.log('✅ Validating compliance for content')
+      console.log('[VALIDATE] Validating compliance for content')
       const response = await this.client.post('/validate/compliance', { 
         content,
         checks: ['DNSH', 'RGPD', 'fraccionamiento']
@@ -305,7 +305,7 @@ ${cleanNarrative}
         results: response.data.validation_results || response.data
       }
     } catch (error) {
-      console.error('❌ Error validating compliance:', error)
+      console.error('[ERR] Error validating compliance:', error)
       return {
         success: false,
         error: error.message,
@@ -317,14 +317,14 @@ ${cleanNarrative}
   // Validación de coherencia entre documentos
   async validateCoherence(sections) {
     try {
-      console.log('🔗 Validating coherence between sections')
+      console.log('[VALIDATE] Validating coherence between sections')
       const response = await this.client.post('/validate/coherence', { sections })
       return {
         success: true,
         results: response.data.coherence_results || response.data
       }
     } catch (error) {
-      console.error('❌ Error validating coherence:', error)
+      console.error('[ERR] Error validating coherence:', error)
       return {
         success: false,
         error: error.message,
@@ -336,14 +336,14 @@ ${cleanNarrative}
   // Generar expediente completo
   async generateComplete(context) {
     try {
-      console.log('🚀 Generating complete expedition')
+      console.log('[GEN] Generating complete expedition')
       const response = await this.client.post('/generate/complete', context)
       return {
         success: true,
         sections: response.data.sections || response.data
       }
     } catch (error) {
-      console.error('❌ Error generating complete expedition:', error)
+      console.error('[ERR] Error generating complete expedition:', error)
       return {
         success: false,
         error: error.message,

@@ -8,6 +8,7 @@ Listo para uso directo o como nodo LangGraph (.as_node()).
 
 import os
 import json
+import re
 from dotenv import load_dotenv
 from backend.core.llm_client import get_llm
 from backend.core.trulens_client import register_eval
@@ -27,6 +28,24 @@ class GeneratorB:
     def __init__(self):
         # Configuramos el modelo para tareas narrativas (mayor longitud)
         self.llm = get_llm(task_type="json_b", temperature=0.3)
+
+    def _clean_json_response(self, raw_text: str) -> str:
+        """
+        Limpia respuestas LLM que contengan JSON con markdown o texto adicional
+        """
+        # Quitar bloques markdown
+        text = re.sub(r'```json\s*', '', raw_text)
+        text = re.sub(r'```\s*', '', text)
+        
+        # Buscar primer { hasta último }
+        start = text.find('{')
+        end = text.rfind('}')
+        
+        if start == -1 or end == -1:
+            # Si no encuentra JSON, devolver el texto original
+            return raw_text
+        
+        return text[start:end+1].strip()
 
     async def ainvoke(self, state: dict):
         """
@@ -48,13 +67,20 @@ class GeneratorB:
             expediente_id = state.get("expediente_id", "EXP-000")
             documento = state.get("documento", "JN")
             seccion = state.get("seccion", "JN.x")
+            
+            # Limitar tamaño de structured_data a 2000 caracteres para evitar prompts excesivos
+            structured_data_str = json.dumps(structured_data, ensure_ascii=False, indent=2)
+            if len(structured_data_str) > 2000:
+                structured_data_str = structured_data_str[:2000] + "\n...[datos truncados por longitud]"
+            else:
+                structured_data_str = structured_data_str
 
             # === Construcción avanzada del prompt narrativo ===
             full_prompt = f"""
 {prompt_b}
 
 [DATOS ESTRUCTURADOS VALIDADOS]
-{json.dumps(structured_data, ensure_ascii=False, indent=2)}
+{structured_data_str}
 
 [OBJETIVO]
 Redacta una narrativa formal y coherente basada en los datos estructurados.
@@ -73,8 +99,11 @@ Mantén tono administrativo neutro, evitando repeticiones y sin añadir informac
                 response = await self.llm.ainvoke(full_prompt)
                 narrative_output = response.content
 
+                # === Limpiar respuesta antes de parsear ===
+                cleaned_output = self._clean_json_response(narrative_output)
+
                 # === Calcular métricas de evaluación ===
-                metrics = compute_basic_metrics(structured_data, narrative_output)
+                metrics = compute_basic_metrics(structured_data, cleaned_output)
 
                 # === Construcción del JSON_B final ===
                 json_b = {
@@ -86,7 +115,7 @@ Mantén tono administrativo neutro, evitando repeticiones y sin añadir informac
                     "version": 1,
                     "actor": "G",
                     "proveniencia": "B(narrativa) desde JSON_A validado",
-                    "narrative_output": narrative_output,
+                    "narrative_output": cleaned_output,
                     "calidad": {
                         "score_local": metrics,
                         "warnings": []

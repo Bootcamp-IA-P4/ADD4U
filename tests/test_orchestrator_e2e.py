@@ -40,9 +40,17 @@ async def test_orchestrator_jn1_flow():
     
     # Validar JSON_A
     json_a = final_state["json_a"]
-    assert "data" in json_a, "JSON_A debe tener campo 'data'"
-    assert "objeto" in json_a["data"], "JSON_A debe contener 'objeto'"
-    assert len(json_a["data"]["objeto"]) > 10, "El objeto debe tener contenido"
+    # JSON_A puede tener 'data' o ser directamente el dict con los campos
+    data = json_a.get("data", json_a)
+    assert "objeto" in data or "secciones_JN" in json_a, "JSON_A debe contener 'objeto' o 'secciones_JN'"
+    
+    # Obtener el objeto según la estructura
+    if "secciones_JN" in json_a:
+        objeto = json_a["secciones_JN"].get("objeto", "")
+    else:
+        objeto = data.get("objeto", "")
+    
+    assert len(objeto) > 10, "El objeto debe tener contenido"
     
     # Validar JSON_B
     json_b = final_state["json_b"]

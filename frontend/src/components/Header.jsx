@@ -36,23 +36,15 @@ const Header = () => {
   }
   return (
     <header className="w-full">
-      <div className="flex items-center justify-center">
-        <div className="flex items-center justify-between w-full max-w-6xl gap-4">
+      <div className="flex items-center justify-center py-1">
+        <div className="flex items-center justify-between w-full max-w-6xl gap-2">
           {/* Logo y título centrados */}
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl flex items-center justify-center bot-avatar shadow-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center -my-2">
+              <img src="/images/icono2.png" alt="Mini-CELIA Logo" className="h-40 w-40 object-contain" />
             </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold" 
-                  style={{background: 'linear-gradient(135deg, var(--cm-red) 0%, var(--cm-red-dark) 100%)', 
-                          WebkitBackgroundClip: 'text', 
-                          WebkitTextFillColor: 'transparent'}}>
-                Mini‑CELIA
-              </h1>
-              <p className="text-sm text-muted font-medium">Copilot Inteligente de Licitaciones</p>
+            <div>              
+              <p className="text-sm font-medium text-brand-green">Copilot Inteligente de Licitaciones</p>
             </div>
           </div>
           
