@@ -3,10 +3,11 @@ import glob
 import hashlib
 import datetime
 import asyncio
+import uuid
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings   # ✅ nueva importación
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_mongodb import MongoDBAtlasVectorSearch
 
@@ -24,7 +25,6 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 
 # ---------- Utilidades ----------
 def extract_text_from_pdf(path: str) -> str:
-    """Extrae texto completo de un PDF."""
     reader = PdfReader(path)
     text = ""
     for page in reader.pages:
@@ -40,11 +40,9 @@ async def process_pdfs():
         print("⚠️ No se encontraron PDFs en ./pdfs")
         return
 
-    # --- Conexión Mongo ---
     client = MongoClient(mongo_uri)
     normativa_col = client[DB_NAME][COLL_NORMATIVA]
 
-    # --- Configuración embeddings ---
     embeddings = HuggingFaceEmbeddings(model_name=MODEL_NAME)
     vectorstore = MongoDBAtlasVectorSearch.from_connection_string(
         connection_string=mongo_uri,
@@ -55,42 +53,55 @@ async def process_pdfs():
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 
-    # --- Procesar PDFs ---
-    for i, pdf_path in enumerate(pdf_files, start=1):
+    for pdf_path in pdf_files:
         titulo = os.path.basename(pdf_path)
-        doc_id = f"normativa_{i:03d}"
         print(f"📄 Procesando {titulo}...")
 
-        # Extraer texto
         text = extract_text_from_pdf(pdf_path)
         if not text:
             print(f"⚠️ No se pudo extraer texto de {titulo}")
             continue
 
-        # Hash y metadatos
         hash_val = hashlib.sha256(text.encode()).hexdigest()
-        metadata = {
-            "title": titulo,
-            "source": pdf_path,
-            "id": doc_id,
-            "tipo": "normativa",
-            "fecha_insercion": datetime.datetime.utcnow().isoformat(),
-        }
 
-        # --- Insertar documento completo en normativa_global ---
+        # Evitar duplicados exactos (por hash)
+        existing = normativa_col.find_one({"hash": hash_val})
+        if existing:
+            print(f"⚠️ {titulo} ya existe (hash duplicado).")
+            continue
+
+        # Detectar versión nueva del mismo título
+        prior = normativa_col.find_one({"metadata.title": titulo})
+        version_de = prior["id"] if prior else None
+        version = (prior.get("metadata", {}).get("version", 0) + 1) if prior else 1
+
+        # ID único con UUID
+        doc_id = f"normativa_{uuid.uuid4().hex[:8]}"
+
         normativa_doc = {
             "id": doc_id,
             "text": text,
-            "metadata": metadata,
             "hash": hash_val,
+            "metadata": {
+                "title": titulo,
+                "source": pdf_path,
+                "tipo": "normativa",
+                "version": version,
+                "version_de": version_de,
+                "fecha_insercion": datetime.datetime.utcnow().isoformat(),
+            },
         }
+
         normativa_col.insert_one(normativa_doc)
 
-        # --- Crear chunks y añadir a embeddings ---
-        chunks = splitter.create_documents([text], metadatas=[metadata])
+        # Crear chunks y añadirlos al vectorstore
+        chunks = splitter.create_documents([text], metadatas=[normativa_doc["metadata"]])
         vectorstore.add_documents(chunks)
 
-        print(f"✅ {titulo}: insertado en normativa_global y vectorizado ({len(chunks)} chunks)")
+        if version_de:
+            print(f"🆕 Nueva versión detectada de {titulo} (v{version}) — anterior: {version_de}")
+        else:
+            print(f"✅ Insertado {titulo} con id={doc_id} (v1)")
 
     print("🎯 Todos los PDFs procesados correctamente.")
 
