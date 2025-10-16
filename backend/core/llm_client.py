@@ -80,7 +80,7 @@ def get_llm(
         print(f"[LLM Client] ⚠️ Error al cargar {provider}: {e}. Usando fallback OpenAI.")
         fallback_api = os.getenv("OPENAI_API_KEY")
         return ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-5"),
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
             api_key=fallback_api,
             temperature=temperature,
             max_tokens=max_tokens,
