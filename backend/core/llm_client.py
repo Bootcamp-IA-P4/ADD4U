@@ -49,7 +49,7 @@ def get_llm(
     provider = provider or os.getenv("LLM_PROVIDER", "openai").lower()
     model_name = model_name or os.getenv("OPENAI_MODEL", "gpt-5")
 
-    # --- Límite de tokens configurable por tipo de tarea ---
+    '''# --- Límite de tokens configurable por tipo de tarea ---
     default_max = {
         "json_a": int(os.getenv("MAX_TOKENS_JSON_A", "1500")),
         "json_b": int(os.getenv("MAX_TOKENS_JSON_B", "2500")),
@@ -57,7 +57,7 @@ def get_llm(
         "generic": int(os.getenv("MAX_TOKENS_DEFAULT", "2000")),
     }
     max_tokens = max_tokens or default_max.get(task_type, 2000)
-
+    '''
     # --- Inicialización segura ---
     try:
         if provider == "groq" and HAS_GROQ:

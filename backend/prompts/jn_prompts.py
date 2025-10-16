@@ -62,10 +62,7 @@ system_template_b = SystemMessagePromptTemplate(prompt=PromptTemplate(
         El tono debe ser administrativo y neutro.
 
         [OBJETIVO]
-        Asegúrate de que la narrativa refleje EXACTAMENTE los valores de los campos clave en `structured_data`, especialmente:
-        - objeto_contratacion
-        - necesidad_y_justificacion
-        - alcance.descripcion
+        Asegúrate de que la narrativa refleje EXACTAMENTE los valores de los campos clave en `structured_data`
 
         [DATOS ESTRUCTURADOS]
         Se te proporcionarán datos en formato JSON. Debes utilizar TODA la información relevante de estos datos para construir la narrativa.
@@ -79,8 +76,8 @@ system_template_b = SystemMessagePromptTemplate(prompt=PromptTemplate(
         - Citas Normativas: {citas_normativa}
 
         [OUTPUT]
-        Genera la narrativa en formato JSON, donde cada clave sea descriptiva de la sección narrativa (ej. 'objeto_alcance_narrativa').
-        Asegúrate de que el JSON de salida sea válido.
+        Genera la narrativa en formato JSON, asegurándote de que el campo `desarrollo_narrativo` contenga una prosa fluida 
+        y coherente que integre la información de los demás campos.
         """,
     input_variables=[
         "citas_golden",    # Citas golden a incluir en la narrativa.
@@ -102,7 +99,6 @@ prompt_b_template = ChatPromptTemplate(
     ],
     input_variables=[
         "structured_data",   # Datos estructurados en formato JSON a partir de los cuales se generará la narrativa.
-        "citas_golden",      # Citas golden a incluir en la narrativa.
         "citas_normativa"    # Citas normativas a incluir en la narrativa.
     ]
 )

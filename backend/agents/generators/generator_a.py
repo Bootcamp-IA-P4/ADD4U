@@ -104,7 +104,7 @@ class GeneratorA:
             try:
                 # === Invocación al modelo ===
                 response = await self.llm.ainvoke(full_prompt)
-                structured_output = response.content
+                structured_output = response.content.replace("```json", "").replace("```", "").strip()
 
                 # === Limpiar respuesta antes de parsear ===
                 cleaned_output = self._clean_json_response(structured_output)
