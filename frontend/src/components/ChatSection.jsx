@@ -19,39 +19,6 @@ const ChatSection = () => {
   const textareaRef = useRef(null)
   
   useEffect(() => {
-    // Welcome message on first load
-    if (state.chat.length === 0) {
-      const welcomeMessage = '<div class="welcome-message">' +
-        '<h3 style="color: #38b6ff; font-weight: 700; margin-bottom: 16px; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">' +
-        '¡Bienvenido a Mini-CELIA!' +
-        '</h3>' +
-        '<p style="margin-bottom: 16px; color: var(--ink); font-weight: 500;">Generador inteligente de documentos de licitación:</p>' +
-        '<div style="display: grid; gap: 8px; margin-bottom: 16px;">' +
-        '<div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #ffffff; border: 2px solid #e0e0e0; border-radius: 8px;">' +
-
-        '<strong>Justificación de la Necesidad (JN)</strong>' +
-        '</div>' +
-        '<div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #ffffff; border: 2px solid #e0e0e0; border-radius: 8px;">' +
-
-        '<strong>Pliego de Prescripciones Técnicas (PPT)</strong>' +
-        '</div>' +
-        '<div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #ffffff; border: 2px solid #e0e0e0; border-radius: 8px;">' +
-
-        '<strong>Cuadro Económico de Costes (CEC)</strong>' +
-        '</div>' +
-        '<div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #ffffff; border: 2px solid #e0e0e0; border-radius: 8px;">' +
-
-        '<strong>Cuadro Resumen (CR)</strong>' +
-        '</div>' +
-        '</div>' +
-        '<p style="color: #32a842; font-weight: 600;">� Selecciona un ejemplo o describe tu necesidad</p>' +
-        '</div>'
-      
-      addMessage('bot', welcomeMessage)
-    }
-  }, [])
-
-  useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTo({
@@ -101,12 +68,10 @@ const ChatSection = () => {
       const formData = {
         expediente_id: expedienteId,
         seccion: "JN.1", 
-        user_text: userText,
-        structured_llm_choice: "openai",
-        narrative_llm_choice: "groq"
+        user_text: userText
       }
 
-      console.log('[API] Enviando datos a la API:', formData)
+      console.log('[API] Enviando datos a la API (orquestador):', formData)
       
       // Validar que tenemos todos los datos necesarios
       if (!formData.expediente_id || !formData.user_text) {
@@ -138,26 +103,93 @@ const ChatSection = () => {
       user_text: null
     })
   }
+  
+  // Nuevo: Manejar selección de ejemplo (vía rápida)
+  const handleExampleSelection = async (exampleData) => {
+    // 1. Mostrar el ejemplo seleccionado como mensaje del usuario
+    const userMessage = `<strong>${exampleData.title}</strong><br><br>${exampleData.text}`
+    addMessage('user', userMessage)
+    
+    // 2. Generar expediente_id automático basado en categoría y timestamp
+    const categoryPrefix = exampleData.category.toUpperCase().substring(0, 3)
+    const timestamp = Date.now().toString().slice(-4)
+    const autoExpedienteId = `${categoryPrefix}-${timestamp}`
+    
+    // 3. Mostrar mensaje de confirmación simple con el expediente auto-generado
+    const confirmMessage = `<strong>Expediente:</strong> ${autoExpedienteId}<br>` +
+      `<strong>Sección:</strong> JN.1<br><br>` +
+      `Generando justificación...`
+    
+    addMessage('bot', confirmMessage)
+    setIsThinking(true)
+    
+    // 4. Pequeño delay para permitir que React actualice la UI
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // 5. Lanzar generación directa sin preguntar nada
+    try {
+      const formData = {
+        expediente_id: autoExpedienteId,
+        seccion: "JN.1",
+        user_text: exampleData.text
+      }
+      
+      const result = await apiService.generateJN(formData)
+      
+      setIsThinking(false)
+      
+      if (result.success) {
+        addMessage('bot', result.content)
+      } else {
+        addMessage('bot', result.content || 'Error al generar la JN. Por favor, inténtalo de nuevo.')
+        if (result.error) {
+          console.error('[ERROR]', result.error)
+        }
+      }
+    } catch (error) {
+      setIsThinking(false)
+      console.error('[ERROR]', error)
+      addMessage('bot', `Error al generar: ${error.message}`)
+    }
+  }
+  
   const handleQuickAction = (action) => {
     if (action.startsWith('jn_')) {
       const jnDescription = getJNTypeDescription(action)
       
-      // Set conversation state and ask for expediente ID
-      setConversationState({
-        waitingFor: 'expediente_id',
-        selectedJNType: action,
-        expediente_id: null,
-        user_text: null
-      });      const message = `<strong>Iniciando Justificación de Necesidad: ${jnDescription}</strong><br><br>` +
-        `Para generar tu JN necesito estos datos:<br>` +
-        `• <strong>ID del expediente</strong> (usuario define)<br>` +
-        `• <strong>Descripción detallada</strong> (usuario define)<br>` +
-        `• <strong>Sección:</strong> JN.1 (autocompletado como inicio)<br><br>` +
-        `<strong>Empezamos:</strong><br>` +
-        `¿Cómo quieres llamar a tu expediente? Dame el ID o título.<br><br>` +
-        `<em>Ejemplos: PTX_001, OBR_MERCADILLOS, SRV_LIMPIEZA, TEC_SOFTWARE, etc.</em>`
+      // Generar expediente_id automático
+      const categoryMap = {
+        'jn_obras': 'OBR',
+        'jn_servicios': 'SER',
+        'jn_suministros': 'SUM',
+        'jn_consultoria': 'CON',
+        'jn_tecnologia': 'TEC',
+        'jn_mantenimiento': 'MAN'
+      }
+      
+      const prefix = categoryMap[action] || 'GEN'
+      const timestamp = Date.now().toString().slice(-4)
+      const autoExpedienteId = `${prefix}-${timestamp}`
+      
+      // Mostrar mensaje pidiendo solo la descripción
+      const message = `<strong>${jnDescription}</strong><br><br>` +
+        `Expediente: <strong>${autoExpedienteId}</strong> (auto-generado)<br>` +
+        `Sección: <strong>JN.1</strong><br><br>` +
+        `Describe detalladamente lo que necesitas contratar:<br>` +
+        `• ¿Qué servicio, obra o suministro necesitas?<br>` +
+        `• ¿Cuál es el alcance y las cantidades?<br>` +
+        `• ¿Dónde se ejecutará?<br>` +
+        `• ¿Por qué es necesario?`
 
       addMessage('bot', message)
+      
+      // Guardar estado para esperar la descripción
+      setConversationState({
+        waitingFor: 'user_description',
+        selectedJNType: action,
+        expediente_id: autoExpedienteId,
+        user_text: null
+      })
     }
   }
   const handleSubmit = async (e) => {
@@ -431,11 +463,8 @@ const ChatSection = () => {
       {/* Área de chat scrollable */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Ejemplos de Licitación */}
-        {state.chat.length <= 1 && (
-          <LicitacionExamples onSelectExample={(text) => {
-            setInputValue(text)
-            textareaRef.current?.focus()
-          }} />
+        {state.chat.filter(m => m.role === 'user').length === 0 && (
+          <LicitacionExamples onSelectExample={handleExampleSelection} />
         )}
         
         {/* Sistema de Re-pregunta */}

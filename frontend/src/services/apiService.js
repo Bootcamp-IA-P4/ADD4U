@@ -44,25 +44,22 @@ class ApiService {
     try {
       console.log('[DATA] generateJN userInput:', userInput)
       
-      // Construir el payload exacto que espera el backend
+      // Construir el payload para el nuevo endpoint orquestado
       const body = {
-        user_input: {
-          expediente_id: userInput.expediente_id,
-          seccion: userInput.seccion,
-          user_text: userInput.user_text
-        },
-        structured_llm_choice: userInput.structured_llm_choice || 'openai',
-        narrative_llm_choice: userInput.narrative_llm_choice || 'groq'
+        expediente_id: userInput.expediente_id,
+        documento: "JN",
+        seccion: userInput.seccion,
+        user_text: userInput.user_text
       }
       
-      console.log('[SEND] Sending to backend:', body)
-      const response = await this.client.post('/justificacion/generar_jn', body)
+      console.log('[SEND] Sending to backend (orquestado):', body)
+      const response = await this.client.post('/justificacion/generar_jn_orquestado', body)
       
       // Formatear la respuesta para mostrar en el chat
       const jnData = response.data
       const formattedContent = this.formatJNResponse(jnData)
       
-      return { success: true, content: formattedContent }
+      return { success: true, content: formattedContent, data: jnData }
     } catch (error) {
       console.error('[ERR] Error generating JN (real):', error)
       return {
@@ -74,30 +71,57 @@ class ApiService {
   }
   // Formatear respuesta de JN del backend para mostrar en el chat
   formatJNResponse(jnData) {
-    console.log('[PROC] Procesando respuesta del backend:', jnData)
+    // DEBUG TEMPORAL: Ver estructura exacta
+    console.log('=== ESTRUCTURA BACKEND ===')
+    console.log('Tipo de jnData:', typeof jnData)
+    console.log('Keys de jnData:', Object.keys(jnData))
+    console.log('jnData.json_b existe?', !!jnData.json_b)
+    console.log('Tipo de json_b:', typeof jnData.json_b)
+    if (jnData.json_b) {
+      console.log('Contenido de json_b:', jnData.json_b)
+      if (typeof jnData.json_b === 'string') {
+        console.log('json_b es string, primeros 200 chars:', jnData.json_b.substring(0, 200))
+      } else {
+        console.log('Keys de json_b:', Object.keys(jnData.json_b))
+      }
+    }
+    console.log('========================')
     
     // Extraer la narrativa limpia según la estructura de respuesta del backend
     let cleanNarrative = this.extractCleanNarrative(jnData)
     
     // Si no hay narrativa extraída, usar un formato básico
     if (!cleanNarrative) {
-      cleanNarrative = 'Justificación de la Necesidad generada correctamente. Los datos estructurados han sido procesados por el sistema.'
+      console.error('[ERROR] No se pudo extraer la narrativa. Ver logs arriba.')
+      cleanNarrative = '⚠️ No se pudo extraer la narrativa del backend.'
     }
     
     const now = new Date().toLocaleString('es-ES')
+    const seccion = jnData.seccion || 'JN.1'
+    const expedienteId = jnData.expediente_id || 'N/A'
+    
+    // Información adicional del orquestador
+    let additionalInfo = ''
+    if (jnData.rag_results_count !== undefined) {
+      additionalInfo += `<br><strong>Referencias RAG:</strong> ${jnData.rag_results_count} documentos consultados`
+    }
+    if (jnData.validation_result) {
+      const validationStatus = jnData.validation_result.is_valid ? '✓ Validado' : '⚠ Requiere revisión'
+      additionalInfo += `<br><strong>Validación:</strong> ${validationStatus}`
+    }
     
     return `<div class="generated-content">
-<h3 style="color: var(--cm-red); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+<h3 style="color: #38b6ff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-weight: 700;">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
     <polyline points="14,2 14,8 20,8"/>
     <line x1="16" y1="13" x2="8" y2="13"/>
     <line x1="16" y1="17" x2="8" y2="17"/>
   </svg>
-  Justificación de la Necesidad (JN) - IA
+  Justificación de la Necesidad - Sección ${seccion}
 </h3>
 
-<div style="background: #f8f9fa; padding: 16px; border-left: 4px solid var(--cm-red); margin: 12px 0; border-radius: 8px; line-height: 1.6;">
+<div style="background: #ffffff; padding: 16px; border-left: 4px solid #38b6ff; margin: 12px 0; border-radius: 8px; line-height: 1.6; border: 2px solid #e0e0e0;">
 ${cleanNarrative}
 </div>
 
@@ -106,45 +130,87 @@ ${cleanNarrative}
     <circle cx="12" cy="12" r="10"/>
     <path d="M12 6l0 6l4 4"/>
   </svg>
-  <strong>Generado:</strong> ${now} - Contenido creado con IA (OpenAI GPT-4)
+  <strong>Expediente:</strong> ${expedienteId} | <strong>Generado:</strong> ${now}${additionalInfo}
 </small></p>
 </div>`
   }  // Extraer solo la narrativa limpia de la respuesta compleja del backend
   extractCleanNarrative(jnData) {
     try {
-      console.log('[EXTRACT] Extrayendo narrativa de:', jnData)
+      console.log('[EXTRACT] Iniciando extracción...')
+      console.log('[EXTRACT] jnData tiene json_b?', !!jnData.json_b)
+      
+      // NUEVO: Caso prioritario - json_b del orquestador (narrativa completa)
+      if (jnData.json_b) {
+        console.log('[EXTRACT] json_b encontrado, tipo:', typeof jnData.json_b)
+        
+        // json_b puede ser string (JSON serializado) u objeto
+        let jsonBData = jnData.json_b
+        
+        // Si es string, intentar parsear
+        if (typeof jsonBData === 'string') {
+          console.log('[EXTRACT] json_b es string, parseando...')
+          try {
+            jsonBData = JSON.parse(jsonBData)
+            console.log('[EXTRACT] Parseado exitoso')
+          } catch (e) {
+            console.log('[EXTRACT] No es JSON, asumiendo que es la narrativa directamente')
+            // Si no es JSON válido, asumimos que es la narrativa directamente
+            return this.cleanNarrativeText(jsonBData)
+          }
+        }
+        
+        // Ahora jsonBData es un objeto
+        console.log('[EXTRACT] jsonBData keys:', Object.keys(jsonBData))
+        
+        // PRIORIDAD 1: narrative_output (estructura del orquestador nuevo)
+        if (jsonBData.narrative_output && typeof jsonBData.narrative_output === 'string') {
+          console.log('[EXTRACT] ✅ Narrativa encontrada en json_b.narrative_output')
+          return this.cleanNarrativeText(jsonBData.narrative_output)
+        }
+        
+        // PRIORIDAD 2: narrativa (estructura antigua)
+        if (jsonBData.narrativa && typeof jsonBData.narrativa === 'string') {
+          console.log('[EXTRACT] ✅ Narrativa encontrada en json_b.narrativa')
+          return this.cleanNarrativeText(jsonBData.narrativa)
+        }
+        
+        // PRIORIDAD 3: texto_completo (fallback)
+        if (jsonBData.texto_completo && typeof jsonBData.texto_completo === 'string') {
+          console.log('[EXTRACT] ✅ Narrativa encontrada en json_b.texto_completo')
+          return this.cleanNarrativeText(jsonBData.texto_completo)
+        }
+        
+        console.log('[EXTRACT] ⚠️ json_b no tiene narrative_output, narrativa ni texto_completo')
+        console.log('[EXTRACT] Campos disponibles:', Object.keys(jsonBData))
+      } else {
+        console.log('[EXTRACT] ⚠️ jnData NO tiene json_b')
+      }
       
       // Caso 1: Si hay un campo 'narrativa' directo (principal según el backend)
       if (jnData.narrativa && typeof jnData.narrativa === 'string') {
-        console.log('[OK] Narrativa encontrada en campo directo')
         return this.cleanNarrativeText(jnData.narrativa)
       }
       
       // Caso 2: Si la narrativa está en un objeto anidado
       if (jnData.data?.narrativa && typeof jnData.data.narrativa === 'string') {
-        console.log('[OK] Narrativa encontrada en data.narrativa')
         return this.cleanNarrativeText(jnData.data.narrativa)
       }
       
       // Caso 3: Si hay un campo 'response' que contiene la narrativa
       if (jnData.response && typeof jnData.response === 'string') {
-        console.log('[OK] Narrativa encontrada en response')
         return this.cleanNarrativeText(jnData.response)
       }
       
       // Caso 4: Si está en 'content', 'text' o 'texto'
       if (jnData.content && typeof jnData.content === 'string') {
-        console.log('[OK] Narrativa encontrada en content')
         return this.cleanNarrativeText(jnData.content)
       }
       
       if (jnData.text && typeof jnData.text === 'string') {
-        console.log('[OK] Narrativa encontrada en text')
         return this.cleanNarrativeText(jnData.text)
       }
       
       if (jnData.texto && typeof jnData.texto === 'string') {
-        console.log('[OK] Narrativa encontrada en texto')
         return this.cleanNarrativeText(jnData.texto)
       }
       
@@ -154,24 +220,21 @@ ${cleanNarrative}
         for (const [key, value] of Object.entries(jnData)) {
           if (typeof value === 'object' && value !== null) {
             if (value.narrativa && typeof value.narrativa === 'string') {
-              console.log(`[OK] Narrativa encontrada en ${key}.narrativa`)
               return this.cleanNarrativeText(value.narrativa)
             }
           }
           
           // Buscar en campos string largos que parezcan narrativa
           if (typeof value === 'string' && value.length > 50 && this.looksLikeNarrative(value)) {
-            console.log(`[OK] Narrativa encontrada en campo '${key}'`)
             return this.cleanNarrativeText(value)
           }
         }
       }
       
-      console.warn('[WARN] No se encontró narrativa en la respuesta:', Object.keys(jnData))
       return null
       
     } catch (error) {
-      console.error('[ERR] Error extrayendo narrativa:', error)
+      console.error('[ERROR] Error extrayendo narrativa:', error)
       return null
     }
   }

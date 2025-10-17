@@ -100,7 +100,11 @@ const LicitacionExamples = ({ onSelectExample }) => {
               {category.examples.map((example, idx) => (
                 <button
                   key={idx}
-                  onClick={() => onSelectExample(example.text)}
+                  onClick={() => onSelectExample({
+                    category: category.category,
+                    title: example.title,
+                    text: example.text
+                  })}
                   className="w-full text-left p-3 bg-white border-2 border-gray-300 hover:border-brand-green rounded-lg transition-all group"
                   title={example.tooltip}
                 >

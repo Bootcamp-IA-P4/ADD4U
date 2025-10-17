@@ -80,10 +80,10 @@ body {
 }
 
 .bot-bubble {
-  background: #ffcf00;
-  border: 2px solid #e6bb00;
+  background: #ffffff;
+  border: 2px solid #38b6ff;
   color: var(--ink);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(56, 182, 255, 0.15);
 }
 
 .user-bubble {
