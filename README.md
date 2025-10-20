@@ -441,14 +441,16 @@ uvicorn backend.main:app --reload
 ### **Flujo de Trabajo Típico:**
 
 ```mermaid
-graph TD
+flowchart TD
+
     A[Usuario abre Mini-CELIA] --> B[Chat de bienvenida]
-    B --> C[Click "Generar JN"]
+    B --> C["Click \"Generar JN\""]
     C --> D[Introduce ID expediente]
     D --> E[Describe la necesidad]
     E --> F[IA procesa con GPT-4]
     F --> G[Documento JN generado]
     G --> H[Revisar y exportar]
+
 ```
 
 ---
@@ -769,10 +771,10 @@ Gracias a estas personas que han contribuido a este proyecto:
       <sub>IA & LangChain</sub>
     </td>
     <td align="center">
-      <a href="https://github.com/contributor4">
+      <a href="https://github.com/abbyenredes">
         <img src="https://github.com/identicons/contributor4.png" width="100px;" alt="Contributor 4"/>
         <br />
-        <sub><b>Contribuidor 4</b></sub>
+        <sub><b>Abigail Masapanta</b></sub>
       </a>
       <br />
       <sub>Base de Datos</sub>
