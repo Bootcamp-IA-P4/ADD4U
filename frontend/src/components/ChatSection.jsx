@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAppState } from '../contexts/AppStateContext'
 import apiService from '../services/apiService'
+import LicitacionExamples from './LicitacionExamples'
+import ClarificationPrompts from './ClarificationPrompts'
 
 const ChatSection = () => {
   const { state, addMessage, escapeHtml } = useAppState()
@@ -16,30 +18,6 @@ const ChatSection = () => {
   const chatBoxRef = useRef(null)
   const textareaRef = useRef(null)
   
-  useEffect(() => {
-    // Welcome message on first load
-    if (state.chat.length === 0) {
-      const welcomeMessage = '<div class="welcome-message">' +
-        '<h3 style="color: var(--cm-red); font-weight: 600; margin-bottom: 16px; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">' +
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">' +
-        '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>' +
-        '</svg>' +
-        'Bienvenido a Mini-CELIA!' +
-        '</h3>' +
-        '<p style="margin-bottom: 16px; color: var(--ink);">Soy tu copilot inteligente para documentos de licitacion. Puedo ayudarte a generar:</p>' +
-        '<ul style="margin-bottom: 16px; padding-left: 20px; color: var(--ink);">' +
-        '<li style="margin-bottom: 8px;"><strong>Justificacion de la Necesidad (JN)</strong></li>' +
-        '<li style="margin-bottom: 8px;"><strong>Pliego de Prescripciones Tecnicas (PPT)</strong></li>' +
-        '<li style="margin-bottom: 8px;"><strong>Cuadro Economico de Costes (CEC)</strong></li>' +
-        '<li style="margin-bottom: 8px;"><strong>Cuadro Resumen (CR)</strong></li>' +
-        '</ul>' +
-        '<p style="color: var(--cm-red); font-weight: 500;">Usa las acciones rapidas de abajo o escribeme directamente lo que necesitas</p>' +
-        '</div>'
-      
-      addMessage('bot', welcomeMessage)
-    }
-  }, [])
-
   useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (chatBoxRef.current) {
@@ -85,17 +63,15 @@ const ChatSection = () => {
 
   const generateJNFromConversation = async (expedienteId, userText, selectedType) => {
     try {
-      console.log('🔍 Generando JN con datos:', { expedienteId, userText, selectedType })
+      console.log('[GEN] Generando JN con datos:', { expedienteId, userText, selectedType })
       
       const formData = {
         expediente_id: expedienteId,
         seccion: "JN.1", 
-        user_text: userText,
-        structured_llm_choice: "openai",
-        narrative_llm_choice: "groq"
+        user_text: userText
       }
 
-      console.log('📤 Enviando datos a la API:', formData)
+      console.log('[API] Enviando datos a la API (orquestador):', formData)
       
       // Validar que tenemos todos los datos necesarios
       if (!formData.expediente_id || !formData.user_text) {
@@ -116,7 +92,7 @@ const ChatSection = () => {
       }    } catch (error) {
       setIsThinking(false)
       console.error('Error generating JN:', error)
-      addMessage('bot', `❌ <strong>Error al conectar con la API:</strong> ${error.message}<br><br>Verifica que el backend esté funcionando en <code>http://localhost:8000</code> y que tengas las variables de entorno configuradas.`)
+      addMessage('bot', `<strong>[ERROR] Error al conectar con la API:</strong> ${error.message}<br><br>Verifica que el backend esté funcionando en <code>http://localhost:8000</code> y que tengas las variables de entorno configuradas.`)
     }
 
     // Reset conversation state
@@ -127,26 +103,93 @@ const ChatSection = () => {
       user_text: null
     })
   }
+  
+  // Nuevo: Manejar selección de ejemplo (vía rápida)
+  const handleExampleSelection = async (exampleData) => {
+    // 1. Mostrar el ejemplo seleccionado como mensaje del usuario
+    const userMessage = `<strong>${exampleData.title}</strong><br><br>${exampleData.text}`
+    addMessage('user', userMessage)
+    
+    // 2. Generar expediente_id automático basado en categoría y timestamp
+    const categoryPrefix = exampleData.category.toUpperCase().substring(0, 3)
+    const timestamp = Date.now().toString().slice(-4)
+    const autoExpedienteId = `${categoryPrefix}-${timestamp}`
+    
+    // 3. Mostrar mensaje de confirmación simple con el expediente auto-generado
+    const confirmMessage = `<strong>Expediente:</strong> ${autoExpedienteId}<br>` +
+      `<strong>Sección:</strong> JN.1<br><br>` +
+      `Generando justificación...`
+    
+    addMessage('bot', confirmMessage)
+    setIsThinking(true)
+    
+    // 4. Pequeño delay para permitir que React actualice la UI
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // 5. Lanzar generación directa sin preguntar nada
+    try {
+      const formData = {
+        expediente_id: autoExpedienteId,
+        seccion: "JN.1",
+        user_text: exampleData.text
+      }
+      
+      const result = await apiService.generateJN(formData)
+      
+      setIsThinking(false)
+      
+      if (result.success) {
+        addMessage('bot', result.content)
+      } else {
+        addMessage('bot', result.content || 'Error al generar la JN. Por favor, inténtalo de nuevo.')
+        if (result.error) {
+          console.error('[ERROR]', result.error)
+        }
+      }
+    } catch (error) {
+      setIsThinking(false)
+      console.error('[ERROR]', error)
+      addMessage('bot', `Error al generar: ${error.message}`)
+    }
+  }
+  
   const handleQuickAction = (action) => {
     if (action.startsWith('jn_')) {
       const jnDescription = getJNTypeDescription(action)
       
-      // Set conversation state and ask for expediente ID
-      setConversationState({
-        waitingFor: 'expediente_id',
-        selectedJNType: action,
-        expediente_id: null,
-        user_text: null
-      });      const message = `<strong>📋 Iniciando Justificación de Necesidad: ${jnDescription}</strong><br><br>` +
-        `Para generar tu JN necesito estos datos:<br>` +
-        `• <strong>ID del expediente</strong> (usuario define)<br>` +
-        `• <strong>Descripción detallada</strong> (usuario define)<br>` +
-        `• <strong>Sección:</strong> JN.1 (autocompletado como inicio)<br><br>` +
-        `<strong>Empezamos:</strong><br>` +
-        `¿Cómo quieres llamar a tu expediente? Dame el ID o título.<br><br>` +
-        `<em>Ejemplos: PTX_001, OBR_MERCADILLOS, SRV_LIMPIEZA, TEC_SOFTWARE, etc.</em>`
+      // Generar expediente_id automático
+      const categoryMap = {
+        'jn_obras': 'OBR',
+        'jn_servicios': 'SER',
+        'jn_suministros': 'SUM',
+        'jn_consultoria': 'CON',
+        'jn_tecnologia': 'TEC',
+        'jn_mantenimiento': 'MAN'
+      }
+      
+      const prefix = categoryMap[action] || 'GEN'
+      const timestamp = Date.now().toString().slice(-4)
+      const autoExpedienteId = `${prefix}-${timestamp}`
+      
+      // Mostrar mensaje pidiendo solo la descripción
+      const message = `<strong>${jnDescription}</strong><br><br>` +
+        `Expediente: <strong>${autoExpedienteId}</strong> (auto-generado)<br>` +
+        `Sección: <strong>JN.1</strong><br><br>` +
+        `Describe detalladamente lo que necesitas contratar:<br>` +
+        `• ¿Qué servicio, obra o suministro necesitas?<br>` +
+        `• ¿Cuál es el alcance y las cantidades?<br>` +
+        `• ¿Dónde se ejecutará?<br>` +
+        `• ¿Por qué es necesario?`
 
       addMessage('bot', message)
+      
+      // Guardar estado para esperar la descripción
+      setConversationState({
+        waitingFor: 'user_text',
+        selectedJNType: action,
+        expediente_id: autoExpedienteId,
+        user_text: null
+      })
     }
   }
   const handleSubmit = async (e) => {
@@ -168,7 +211,7 @@ const ChatSection = () => {
         expediente_id: expedienteId
       }));
 
-      const message = `<strong>✓ Expediente: ${expedienteId}</strong><br><br>` +
+      const message = `<strong>Expediente: ${expedienteId}</strong><br><br>` +
         `Perfecto! Ahora necesito que me expliques detalladamente:<br><br>` +
         `• <strong>¿Qué actividades o servicios incluye?</strong><br>` +
         `• <strong>¿Dónde se llevará a cabo?</strong><br>` +
@@ -188,11 +231,11 @@ const ChatSection = () => {
         user_text: text
       }));
 
-      const confirmMessage = `<strong>✅ Información completa recibida</strong><br><br>` +
+      const confirmMessage = `<strong>Información completa recibida</strong><br><br>` +
         `<strong>Expediente:</strong> ${conversationState.expediente_id}<br>` +
         `<strong>Tipo:</strong> ${getJNTypeDescription(conversationState.selectedJNType)}<br>` +
         `<strong>Descripción:</strong> ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}<br><br>` +
-        `🔄 <strong>Generando tu Justificación de la Necesidad...</strong>`
+        `<strong>Generando tu Justificación de la Necesidad...</strong>`
 
       addMessage('bot', confirmMessage)
       
@@ -286,8 +329,8 @@ const ChatSection = () => {
     if (message.role === 'bot') {
       return (
         <div key={message.id} className="flex items-start gap-4 animate-fade-in">
-          <div className="h-10 w-10 rounded-full flex items-center justify-center bot-avatar flex-shrink-0">
-            <span className="h-2.5 w-2.5 rounded-full bg-white pulse"></span>
+          <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+            <img src="/images/icono.png" alt="Bot" className="h-10 w-10 object-contain" />
           </div>
           <div 
             className="max-w-[80%] md:max-w-[70%] rounded-2xl bot-bubble px-6 py-4 text-sm leading-relaxed"
@@ -332,189 +375,225 @@ const ChatSection = () => {
     }
   }
 
+  const { saveState, loadState } = useAppState()
+
+  const handleSave = () => {
+    if (saveState()) {
+      showToast('Sesión guardada')
+    }
+  }
+
+  const handleLoad = () => {
+    if (loadState()) {
+      showToast('Sesión cargada')
+    } else {
+      showToast('No hay sesión guardada')
+    }
+  }
+
+  const showToast = (message) => {
+    const toast = document.createElement('div')
+    toast.className = 'fixed bottom-4 right-4 bg-white border-2 border-brand-green text-ink px-4 py-2 rounded-lg shadow-lg z-50'
+    toast.textContent = message
+    document.body.appendChild(toast)
+    setTimeout(() => {
+      toast.style.opacity = '0'
+      setTimeout(() => document.body.removeChild(toast), 300)
+    }, 1600)
+  }
+
   return (
-    <section className="w-full">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--cm-red)'}}>
-          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          Chat Inteligente
-        </h2>
+    <section className="w-full h-full flex flex-col">
+      {/* Header interno con logo y botones - FONDO BLANCO */}
+      <div className="flex items-center justify-between p-3 bg-white border-b-2 border-gray-300">
+        {/* Logo y título */}
         <div className="flex items-center gap-3">
-          <div className={'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ' + getStatusClass()}>
+          <div className="h-14 w-14 flex items-center justify-center">
+            <img src="/images/icono4.png" alt="Mini-CELIA" className="h-14 w-14 object-contain" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-brand-blue">Mini-CELIA</h2>
+            <p className="text-xs text-brand-green font-medium">Copilot Inteligente de Licitaciones</p>
+          </div>
+        </div>
+
+        {/* Botones y estado */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleSave} 
+            className="px-2 py-1 rounded-lg border border-brand-green bg-white text-brand-green text-xs font-semibold hover:bg-brand-green hover:text-white transition-all duration-200"
+          >
+            Guardar
+          </button>
+          
+          <button 
+            onClick={handleLoad} 
+            className="px-2 py-1 rounded-lg border border-brand-blue bg-white text-brand-blue text-xs font-semibold hover:bg-brand-blue hover:text-white transition-all duration-200"
+          >
+            Cargar
+          </button>
+          
+          <div className={'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ' + getStatusClass()}>
             {backendStatus.checking ? (
               <>
                 <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M21 12a9 9 0 11-6.219-8.56"/>
                 </svg>
-                Verificando...
+                <span className="hidden sm:inline">Verificando...</span>
               </>
             ) : backendStatus.connected ? (
               <>
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="12" cy="12" r="10"/>
                 </svg>
-                OpenAI Conectado
+                <span className="hidden sm:inline">Conectado</span>
               </>
             ) : (
               <>
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="12" cy="12" r="10"/>
                 </svg>
-                Modo Offline
+                <span className="hidden sm:inline">Offline</span>
               </>
             )}
-          </div>
-          <div className="text-sm text-muted bg-white px-4 py-2 rounded-full border border-gray-200">
-            Pregunta, propone y corrige
           </div>
         </div>
       </div>
       
-      <div 
-        ref={chatBoxRef}
-        className="h-[60vh] overflow-y-auto scrollbar pr-2 space-y-6 mb-6"
-      >
-        {state.chat.map(renderMessage)}
+      {/* Área de chat scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Ejemplos de Licitación */}
+        {state.chat.filter(m => m.role === 'user').length === 0 && (
+          <LicitacionExamples onSelectExample={handleExampleSelection} />
+        )}
         
-        {isThinking && (
-          <div className="flex items-start gap-4 animate-pulse">
-            <div className="h-10 w-10 rounded-full flex items-center justify-center bot-avatar">
-              <span className="h-2.5 w-2.5 rounded-full bg-white pulse"></span>
-            </div>
-            <div className="max-w-[80%] md:max-w-[70%] rounded-2xl bot-bubble px-6 py-4 text-sm leading-relaxed">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+        {/* Sistema de Re-pregunta */}
+        {inputValue.length > 30 && !isThinking && (
+          <ClarificationPrompts 
+            userInput={inputValue} 
+            onSendClarification={(clarification) => {
+              setInputValue(inputValue + ' ' + clarification)
+              textareaRef.current?.focus()
+            }} 
+          />
+        )}
+        
+        <div 
+          ref={chatBoxRef}
+          className="space-y-6"
+        >
+          {state.chat.map(renderMessage)}
+        
+          {isThinking && (
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+                <img src="/images/icono.png" alt="Bot pensando" className="h-10 w-10 object-contain animate-spin" />
+              </div>
+              <div className="max-w-[80%] md:max-w-[70%] rounded-2xl bot-bubble px-6 py-4 text-sm leading-relaxed">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                  </div>
+                  <span className="text-muted">Procesando tu consulta...</span>
                 </div>
-                <span className="text-muted">Procesando tu consulta...</span>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Acciones rapidas integradas */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <h3 className="text-sm font-semibold text-muted flex items-center gap-2">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            Acciones Rapidas
-          </h3>
-          <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent"></div>
-        </div>        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      {/* Input area con sugerencias rápidas encima */}
+      <div className="p-4 border-t-2 border-gray-300">
+        {/* Sugerencias rápidas - alineadas a la izquierda */}
+        <div className="flex flex-wrap gap-2 mb-3">
           <button 
             onClick={() => handleQuickAction('jn_obras')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border-2 border-emerald-200 disabled:opacity-50 font-medium"
+            className="px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-600 text-white rounded-lg border border-brand-blue disabled:opacity-50 transition-all font-medium"
           >
-            <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 21h18"/>
-              <path d="M5 21V7l8-4v18"/>
-              <path d="M19 21V11l-6-4"/>
-            </svg>
-            JN Obras
+            Obras
           </button>
           <button 
             onClick={() => handleQuickAction('jn_servicios')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl border-2 border-blue-200 disabled:opacity-50 font-medium"
+            className="px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-600 text-white rounded-lg border border-brand-blue disabled:opacity-50 transition-all font-medium"
           >
-            <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            JN Servicios
+            Servicios
           </button>
           <button 
             onClick={() => handleQuickAction('jn_suministros')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl border-2 border-amber-200 disabled:opacity-50 font-medium"
+            className="px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-600 text-white rounded-lg border border-brand-blue disabled:opacity-50 transition-all font-medium"
           >
-            <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M7.5 8a5.5 5.5 0 1 1 9 0"/>
-              <path d="M12 8v13l-4-7 4-6z"/>
-            </svg>
-            JN Suministros
+            Suministros
           </button>
           <button 
             onClick={() => handleQuickAction('jn_mantenimiento')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-purple-50 hover:bg-purple-100 text-purple-800 rounded-xl border-2 border-purple-200 disabled:opacity-50 font-medium"
+            className="px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-600 text-white rounded-lg border border-brand-blue disabled:opacity-50 transition-all font-medium"
           >
-            <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-            </svg>
-            JN Mantenimiento
+            Mantenimiento
           </button>
           <button 
             onClick={() => handleQuickAction('jn_tecnologia')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-xl border-2 border-indigo-200 disabled:opacity-50 font-medium"
+            className="px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-600 text-white rounded-lg border border-brand-blue disabled:opacity-50 transition-all font-medium"
           >
-            <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-            JN Tecnología
+            Tecnología
           </button>
           <button 
             onClick={() => handleQuickAction('jn_formacion')}
             disabled={isThinking}
-            className="quick-action-btn px-4 py-3 text-sm bg-green-50 hover:bg-green-100 text-green-800 rounded-xl border-2 border-green-200 disabled:opacity-50 font-medium"
+            className="px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-600 text-white rounded-lg border border-brand-blue disabled:opacity-50 transition-all font-medium"
           >
-            <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-            </svg>
-            JN Formación
+            Formación
           </button>
         </div>
-      </div>
 
-      {/* Input de chat mejorado */}
-      <div className="bg-white rounded-2xl border-2 border-gray-100 p-4 shadow-lg">
-        <form onSubmit={handleSubmit} className="flex items-end gap-4">
-          <div className="flex-1">
-            <label htmlFor="userInput" className="sr-only">Escribe tu mensaje</label>
-            <textarea
-              ref={textareaRef}
-              id="userInput"
-              rows="2"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}              className="form-textarea border-0 bg-gray-50 focus:bg-white"
-              placeholder={getPlaceholder()}
-            />
-          </div>
-          <button 
-            type="submit"
-            disabled={!inputValue.trim() || isThinking}
-            className="px-6 py-3 rounded-xl cm-btn font-semibold disabled:opacity-50 flex items-center gap-2"
-          >
-            {isThinking ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Procesando...
-              </>
-            ) : (
-              <>
-                <span>Enviar</span>
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="22" y1="2" x2="11" y2="13"/>
-                  <polygon points="22,2 15,22 11,13 2,9 22,2"/>
-                </svg>
-              </>
-            )}
-          </button>
-        </form>
-      </div>    </section>
+        {/* Input de chat mejorado */}
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-4 shadow-lg">
+          <form onSubmit={handleSubmit} className="flex items-end gap-4">
+            <div className="flex-1">
+              <label htmlFor="userInput" className="sr-only">Escribe tu mensaje</label>
+              <textarea
+                ref={textareaRef}
+                id="userInput"
+                rows="2"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="form-textarea border-0 bg-gray-50 focus:bg-white"
+                placeholder={getPlaceholder()}
+              />
+            </div>
+            <button 
+              type="submit"
+              disabled={!inputValue.trim() || isThinking}
+              className="px-6 py-3 rounded-xl cm-btn font-semibold disabled:opacity-50 flex items-center gap-2"
+            >
+              {isThinking ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <span>Enviar</span>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                  </svg>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
   )
 }
 
 export default ChatSection
+

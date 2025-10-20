@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes_expedientes import router as expedientes_router
 from backend.api.routes_outputs import router as outputs_router
 from backend.api.routes_normativa import router as normativa_router
+from backend.api.routes_metrics import router as metrics_router
 
 app = FastAPI(title=settings.app_name)
 

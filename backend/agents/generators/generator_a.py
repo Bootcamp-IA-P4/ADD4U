@@ -8,6 +8,7 @@ Listo para uso directo o como nodo LangGraph (.as_node()).
 
 import os
 import json
+import re
 import datetime
 from dotenv import load_dotenv
 from backend.core.llm_client import get_llm
@@ -27,6 +28,24 @@ class GeneratorA:
     def __init__(self):
         # El modelo se carga desde llm_client con configuración global
         self.llm = get_llm(task_type="json_a", temperature=0.2)
+
+    def _clean_json_response(self, raw_text: str) -> str:
+        """
+        Limpia respuestas LLM que contengan JSON con markdown o texto adicional
+        """
+        # Quitar bloques markdown
+        text = re.sub(r'```json\s*', '', raw_text)
+        text = re.sub(r'```\s*', '', text)
+        
+        # Buscar primer { hasta último }
+        start = text.find('{')
+        end = text.rfind('}')
+        
+        if start == -1 or end == -1:
+            # Si no encuentra JSON, devolver el texto original
+            return raw_text
+        
+        return text[start:end+1].strip()
 
     async def ainvoke(self, state: dict):
         """
@@ -53,6 +72,10 @@ class GeneratorA:
             documento = state.get("documento", "JN")
             seccion = state.get("seccion", "JN.x")
             json_schema = state.get("json_schema", "")
+            
+            # Limitar contexto RAG a 2000 caracteres para evitar prompts excesivamente largos
+            if context and len(context) > 2000:
+                context = context[:2000] + "\n...[contexto truncado por longitud]"
 
             # === Construcción del prompt mejorado ===
             full_prompt = f"""
@@ -83,13 +106,19 @@ class GeneratorA:
                 response = await self.llm.ainvoke(full_prompt)
                 structured_output = response.content.replace("```json", "").replace("```", "").strip()
 
+                # === Limpiar respuesta antes de parsear ===
+                cleaned_output = self._clean_json_response(structured_output)
+
                 # === Intento de parsear el JSON ===
                 try:
-                    parsed_json = json.loads(structured_output)
+                    parsed_json = json.loads(cleaned_output)
                     parse_error = None
                 except json.JSONDecodeError as e:
-                    parsed_json = {"structured_output": structured_output}
+                    parsed_json = {"structured_output": cleaned_output}
                     parse_error = str(e)
+                    print(f"❌ Error parseando JSON: {e}")
+                    print(f"Raw output: {structured_output[:500]}")
+                    print(f"Cleaned output: {cleaned_output[:500]}")
 
                 # === Construcción del JSON_A canónico ===
                 json_a = {
