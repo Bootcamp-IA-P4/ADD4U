@@ -80,7 +80,7 @@ const LicitacionExamples = ({ onSelectExample }) => {
   return (
     <div className="w-full bg-white border-2 border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
       <h3 className="text-lg font-bold text-brand-blue mb-2 flex items-center gap-2">
-        � Ejemplos de Licitación por Categoría
+        📝 Ejemplos de Licitación por Categoría
       </h3>
       <p className="text-sm text-muted mb-6">
         Selecciona un ejemplo para comenzar
