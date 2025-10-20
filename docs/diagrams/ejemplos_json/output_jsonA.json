@@ -1,0 +1,16 @@
+{
+  "expediente_id": "EXP-001",
+  "documento": "JN",
+  "seccion": "JN.1",
+  "nodo": "A",
+  "timestamp": "2025-09-25T10:00:00Z",
+  "actor": "LLM",
+  "json": {
+    "objeto": "Contratación del suministro de 200 equipos informáticos...",
+    "alcance_resumido": "Incluye adquisición, instalación y soporte inicial.",
+    "ambito": "Edificios municipales del Ayuntamiento"
+  },
+  "citas_golden": ["rgpd_art25_2023"],
+  "citas_normativas": [],
+  "hash": "hash_A_JN1"
+}

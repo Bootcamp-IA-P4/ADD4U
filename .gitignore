@@ -1,0 +1,161 @@
+# -----------------------
+# Global / OS
+# -----------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------
+# Environment
+# -----------------------
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+__pypackages__/
+
+# -----------------------
+# Python
+# -----------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+*.egg
+MANIFEST
+.installed.cfg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.* 
+.cache
+coverage.xml
+nosetests.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter / IPython
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# Django / Flask
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+
+# Sphinx
+docs/_build/
+
+# PyBuilder / PyProject
+.pybuilder/
+target/
+.pdm.toml
+poetry.tom
+poetry.lock
+
+# Type checkers / linters
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pyre/
+.pytype/
+
+# Cython
+cython_debug/
+
+# -----------------------
+# Node / Frontend
+# -----------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+.vite/
+
+# -----------------------
+# Editor / IDE
+# -----------------------
+.idea/
+.vscode/
+*.sublime*
+*.swp
+
+# -----------------------
+# Design / Binary
+# -----------------------
+psd
+thumb
+sketch
+
+# -----------------------
+# Misc / Logs
+# -----------------------
+logs
+/logs
+npm-debug.log
+app.log
+.gitkeep
+
+# -----------------------
+# React / project specific backups
+# -----------------------
+**/*.backup.*
+**/*.back.*
+
+# -----------------------
+# TruLens local database
+# -----------------------
+backend/trulens_data/
+*.db
+default.sqlite
+
+# -----------------------
+# HuggingFace / Models Cache
+# -----------------------
+models_cache/
+./models_cache/
+backend/models_cache/
+.cache/huggingface/
+.cache/torch/
