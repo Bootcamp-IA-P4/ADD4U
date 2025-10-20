@@ -64,11 +64,17 @@ class BinderSchemas:
     JN1_DATA_SCHEMA = {
         "type": "object",
         "properties": {
-            "objeto": {"type": "string", "minLength": 10},
-            "alcance_resumido": {"type": "string"},
-            "ambito": {"type": "string"},
+            "secciones_JN": {
+                "type": "object",
+                "required": ["objeto", "alcance", "ambito"],
+                "properties": {
+                    "objeto": {"type": "string", "minLength": 1},
+                    "alcance": {"type": "string"},
+                    "ambito": {"type": "string"},
+                }
+            }
         },
-        "required": ["objeto"],
+        "required": ["secciones_JN"],
     }
 
     # Mapeo de secciones a esquemas de datos
@@ -154,9 +160,26 @@ class BinderSchemas:
             seccion: Código de sección (ej: 'JN.1')
             
         Returns:
-            List[str]: Lista de campos obligatorios
+            List[str]: Lista de campos obligatorios (incluye campos anidados con notación punto)
         """
-        if seccion in BinderSchemas.SECTION_SCHEMAS:
-            schema = BinderSchemas.SECTION_SCHEMAS[seccion]
-            return schema.get("required", [])
-        return []
+        if seccion not in BinderSchemas.SECTION_SCHEMAS:
+            return []
+        
+        schema = BinderSchemas.SECTION_SCHEMAS[seccion]
+        required_fields = []
+        
+        # Función recursiva para extraer campos requeridos
+        def extract_required(schema_dict: Dict, prefix: str = ""):
+            # Campos requeridos en este nivel
+            for field in schema_dict.get("required", []):
+                full_field = f"{prefix}.{field}" if prefix else field
+                required_fields.append(full_field)
+                
+                # Si el campo tiene propiedades anidadas, explorarlas
+                if "properties" in schema_dict and field in schema_dict["properties"]:
+                    nested_schema = schema_dict["properties"][field]
+                    if isinstance(nested_schema, dict) and "properties" in nested_schema:
+                        extract_required(nested_schema, full_field)
+        
+        extract_required(schema)
+        return required_fields

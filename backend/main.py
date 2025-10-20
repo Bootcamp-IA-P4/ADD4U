@@ -17,6 +17,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Endpoint de salud
+@app.get("/health")
+async def health_check():
+    """Endpoint de salud para verificar que el servidor está activo"""
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "timestamp": __import__("datetime").datetime.utcnow().isoformat()
+    }
+
 app.include_router(jn_router)
 app.include_router(expedientes_router)
 app.include_router(outputs_router)

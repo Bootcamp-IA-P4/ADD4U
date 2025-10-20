@@ -47,9 +47,9 @@ def build_orchestrator(debug_mode: bool = False):
         prompt_refiner_agent = PromptRefinerAgent()
         prompt_manager_agent = PromptManager(prompt_a_template, prompt_b_template, debug_mode=debug_mode)
         generator_a_agent = GeneratorA()
-        validator_a_agent = ValidatorAgent(mode="estructurado")
+        validator_a_agent = ValidatorAgent(mode="estructurado", strict=True, max_retries=2)  # Auto-retry habilitado
         generator_b_agent = GeneratorB()
-        validator_b_agent = ValidatorAgent(mode="narrativa")
+        validator_b_agent = ValidatorAgent(mode="narrativa", strict=True, max_retries=0)  # Sin retry para narrativa
 
         async def retriever_node(state: OrchestratorState):
             with langfuse.start_as_current_span(name="retriever_node"):

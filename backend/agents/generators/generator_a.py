@@ -72,11 +72,24 @@ class GeneratorA:
 [DEPENDENCIAS PREVIAS]
 {json.dumps(dependencias, ensure_ascii=False, indent=2)}
 
-[INSTRUCCIONES]
+[INSTRUCCIONES CRÍTICAS]
 - Devuelve SOLO un objeto JSON válido UTF-8.
-- No incluyas ningún texto adicional, explicaciones o formato que no sea el JSON.
-- No inventes datos; usa "faltantes" si la información no está presente.
-- Sigue el esquema canónico del documento.
+- NO incluyas ningún texto adicional, explicaciones, markdown o formato que no sea el JSON puro.
+- SIEMPRE incluye TODOS los campos obligatorios del esquema, incluso si están vacíos.
+- Para la sección JN.1, el JSON DEBE contener el objeto 'secciones_JN' con los campos:
+  * "objeto": descripción del objeto del contrato
+  * "alcance": descripción del alcance
+  * "ambito": ámbito de aplicación
+- Si falta información para un campo, usa un string vacío "" o el valor "Por determinar", NUNCA omitas el campo.
+- NO uses la palabra "faltantes" como valor, usa cadenas vacías o valores descriptivos.
+- Estructura EXACTA esperada para JN.1:
+  {{
+    "secciones_JN": {{
+      "objeto": "descripción o cadena vacía",
+      "alcance": "descripción o cadena vacía",
+      "ambito": "descripción o cadena vacía"
+    }}
+  }}
 """
 
             print("Full Prompt para Generator A:\n", full_prompt)

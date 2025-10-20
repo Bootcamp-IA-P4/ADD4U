@@ -1,11 +1,11 @@
-# 🤖 Mini-CELIA — Chatbot Inteligente para Licitaciones Públicas
+# 🤖 Mini-CELIA — Copilot Inteligente de Licitaciones para la Administración
 
 <div align="center">
 
-**Un asistente de IA especializado en la generación automática de documentación para procesos de licitación pública en España**
+**Sistema de IA especializado que automatiza la generación de documentación para licitaciones públicas en España, reduciendo tiempos de semanas a minutos con cumplimiento normativo garantizado**
 
 ![Status](https://img.shields.io/badge/Status-Activo-brightgreen)
-![Version](https://img.shields.io/badge/Version-2.0-blue)
+![Version](https://img.shields.io/badge/Version-3.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ### 🛠️ Tecnologías
@@ -29,15 +29,24 @@
 
 ## 📋 **¿Qué es Mini-CELIA?**
 
-Mini-CELIA es un **chatbot inteligente** que revoluciona la forma de crear documentación para licitaciones públicas. Utiliza **Inteligencia Artificial** (OpenAI GPT-4) para generar automáticamente las secciones más complejas de los expedientes de licitación, como la **Justificación de la Necesidad (JN)**, siguiendo la normativa española vigente.
+**Mini-CELIA** (Copilot Inteligente de Licitaciones para la Administración) es un **sistema de IA multi-agente** que automatiza la generación de documentación para procesos de licitación pública en España. Utilizando **arquitectura LangGraph**, coordina múltiples agentes especializados (Retriever RAG, Generadores, Validadores) para producir documentos completos con **validación automática** y **cumplimiento normativo garantizado**.
 
 ### 🎯 **Problema que Resuelve**
-- ❌ **Antes**: Redactar documentación de licitaciones tomaba semanas
-- ❌ **Antes**: Alto riesgo de errores normativos y de cumplimiento
-- ❌ **Antes**: Procesos manuales repetitivos y poco eficientes
-- ✅ **Ahora**: Generación automática en minutos con IA
-- ✅ **Ahora**: Cumplimiento normativo garantizado
-- ✅ **Ahora**: Interfaz intuitiva tipo ChatGPT
+
+En la administración pública española, preparar documentación de licitación es:
+- ⏱️ **Lento**: 2-4 semanas por expediente
+- 📚 **Complejo**: Requiere conocimiento profundo de normativa (LCSP, RGPD, DNSH)
+- ❌ **Propenso a errores**: Riesgo de incumplimiento normativo
+- 🔄 **Repetitivo**: Mismos patrones en documentos similares
+
+### ✅ **Solución: Mini-CELIA**
+
+Mini-CELIA automatiza el proceso completo:
+- ⚡ **Rápido**: De semanas a **menos de 10 segundos**
+- 🤖 **Inteligente**: Sistema multi-agente con **auto-validación y auto-reparación**
+- ✅ **Compliant**: Cumplimiento normativo automático (LCSP + RGPD + DNSH)
+- 📊 **Trazable**: Observabilidad completa con LangFuse y TruLens
+- 📄 **Exportable**: PDF multi-sección con narrativas legales completas
 
 ---
 
@@ -62,18 +71,28 @@ cd ADD4U
 
 ### **1.2 Crear y Activar Entorno Virtual**
 
-**En Windows (PowerShell):**
+#### **🪟 Windows (PowerShell)**
 ```powershell
 # Crear entorno virtual
 python -m venv .venv
 
 # Activar entorno virtual
 .\.venv\Scripts\Activate.ps1
-# O si tienes problemas de permisos:
-.\.venv\Scripts\activate.bat
+
+# Si tienes problemas de permisos, ejecuta primero:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-**En Linux/macOS (Bash):**
+#### **🪟 Windows (CMD)**
+```cmd
+# Crear entorno virtual
+python -m venv .venv
+
+# Activar entorno virtual
+.venv\Scripts\activate.bat
+```
+
+#### **🐧 Linux / 🍎 macOS (Bash/Zsh)**
 ```bash
 # Crear entorno virtual
 python3 -m venv .venv
@@ -82,7 +101,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-**En Git Bash en Windows:**
+#### **🪟 Windows (Git Bash)**
 ```bash
 # Crear entorno virtual
 python -m venv .venv
@@ -90,6 +109,8 @@ python -m venv .venv
 # Activar entorno virtual
 source .venv/Scripts/activate
 ```
+
+> **💡 Verificación**: Deberías ver `(.venv)` al inicio de tu línea de comandos
 
 ### **1.3 Configurar Variables de Entorno**
 
@@ -99,20 +120,12 @@ source .venv/Scripts/activate
 cp .env.example .env
 ```
 
-**Editar el archivo `.env` con tus credenciales:**
-```env
-# APIs de IA (OPCIONALES - funciona sin ellas)
-OPENAI_API_KEY=sk-proj-tu-api-key-aqui
-GROQ_API_KEY=gsk-tu-groq-key-aqui
+**Editar el archivo `.env`** con tus credenciales reales (OpenAI API Key, MongoDB URI, etc.). 
+El archivo `.env.example` contiene todas las variables necesarias con valores de ejemplo.
 
-# Base de datos (OPCIONAL)
-MONGODB_URI=mongodb://localhost:27017/mini_celia
+> **💡 Nota:** Para desarrollo local, el sistema puede funcionar sin MongoDB ni APIs externas usando datos mock.
 
-# Frontend
-VITE_API_URL=http://localhost:8000
-```
-
-> **💡 Nota:** Las API Keys son opcionales. El sistema funciona offline sin ellas usando contenido mock.
+> **📄 Variables de Entorno:** Revisa el archivo `.env.example` para ver todas las variables disponibles y su descripción.
 
 ---
 
@@ -128,20 +141,30 @@ pip install -r requirements.txt
 ```
 
 ### **2.2 Ejecutar el Servidor Backend**
+
+#### **🪟 Windows (PowerShell/CMD)**
 ```powershell
-# Opción 1: Ejecutar desde la raíz del proyecto
-python -m backend.main
+# Asegúrate de tener el entorno virtual activado
+# Deberías ver (.venv) en tu prompt
 
-# Opción 2: Usar uvicorn directamente
+# Ejecutar con uvicorn
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-
-# Opción 3: Desde el directorio backend
-cd backend
-uvicorn main:app --reload
 ```
 
-**El backend estará disponible en:** `http://localhost:8000`
-**Documentación Swagger:** `http://localhost:8000/docs`
+#### **🐧 Linux / 🍎 macOS**
+```bash
+# Asegúrate de tener el entorno virtual activado
+source .venv/bin/activate
+
+# Ejecutar con uvicorn
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**El backend estará disponible en:** `http://localhost:8000`  
+**Documentación Swagger:** `http://localhost:8000/docs`  
+**Health Check:** `http://localhost:8000/health`
+
+> **✅ Verificación**: Deberías ver `Application startup complete` en la consola
 
 ---
 
@@ -157,7 +180,11 @@ npm install
 ```
 
 ### **3.2 Ejecutar el Frontend**
-```powershell
+
+#### **Todos los Sistemas Operativos**
+```bash
+# Dentro del directorio frontend/
+
 # Modo desarrollo (con hot reload)
 npm run dev
 
@@ -170,55 +197,145 @@ npm run preview
 
 **El frontend estará disponible en:** `http://localhost:5173`
 
+> **✅ Verificación**: Deberías ver el mensaje `Local: http://localhost:5173/` en la consola
+
 ---
 
 ## 🚦 **Paso 4: Verificación Completa**
 
 ### **4.1 Verificar que Todo Funciona**
 
-**1. Backend funcionando:**
-```bash
-curl http://localhost:8000/health
-# Debería responder: {"status":"healthy"}
+#### **1. Backend funcionando:**
+
+**🪟 Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -Uri http://localhost:8000/health
+# Debería responder: {"status":"ok","service":"mini-celia-backend","timestamp":"..."}
 ```
 
-**2. Frontend funcionando:**
+**🐧 Linux / 🍎 macOS:**
+```bash
+curl http://localhost:8000/health
+# Debería responder: {"status":"ok","service":"mini-celia-backend","timestamp":"..."}
+```
+
+**🌐 Navegador:**
+- Abrir `http://localhost:8000/docs` (Swagger UI)
+- Verificar que se muestra la documentación de la API
+
+#### **2. Frontend funcionando:**
 - Abrir navegador en `http://localhost:5173`
 - Verificar que la interfaz carga correctamente
-- Probar el chat escribiendo "Hola"
+- Verificar que el chat muestra el mensaje de bienvenida
 
-**3. Integración backend-frontend:**
-- Hacer clic en "Generar JN" en el chat
-- Seguir el flujo conversacional
-- Verificar que se conecta con el backend
+#### **3. Integración backend-frontend:**
+- Escribir en el chat: "Hola"
+- Verificar respuesta del bot
+- Probar generación: "Generar JN.1 para servicios de limpieza"
+- Verificar que se genera la narrativa completa
 
 ### **4.2 Solución de Problemas Comunes**
 
-**❌ Error: "Backend not available"**
-```bash
+#### **❌ Error: "Backend not available" o "Connection refused"**
+
+**🪟 Windows:**
+```powershell
 # Verificar que el backend esté corriendo en puerto 8000
 netstat -an | findstr :8000
-# O en Linux/macOS:
-lsof -i :8000
+
+# Verificar proceso Python
+Get-Process python
 ```
 
-**❌ Error: "Module not found"**
+**🐧 Linux / 🍎 macOS:**
 ```bash
-# Reinstalar dependencias de Python
+# Verificar que el backend esté corriendo en puerto 8000
+lsof -i :8000
+
+# O alternativa:
+netstat -tuln | grep :8000
+```
+
+**Solución**: Asegúrate de que el backend esté ejecutándose y el firewall no bloquee el puerto 8000
+
+---
+
+#### **❌ Error: "Module not found" o "ImportError"**
+
+**Todos los sistemas:**
+```bash
+# 1. Activar entorno virtual primero
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# Linux/macOS:
+source .venv/bin/activate
+
+# 2. Reinstalar dependencias de Python
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Reinstalar dependencias de Node
-cd frontend && npm install
+# 3. Verificar instalación
+pip list | grep fastapi
 ```
 
-**❌ Error: "Cannot activate venv"**
+---
+
+#### **❌ Error: "Cannot activate venv" (Windows)**
+
+**Windows PowerShell:**
 ```powershell
-# En PowerShell, habilitar ejecución de scripts:
+# Habilitar ejecución de scripts:
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Verificar cambio:
+Get-ExecutionPolicy
 
 # Luego activar:
 .\.venv\Scripts\Activate.ps1
 ```
+
+**Windows CMD (alternativa):**
+```cmd
+# Usar script .bat en lugar de .ps1
+.venv\Scripts\activate.bat
+```
+
+---
+
+#### **❌ Error: "Port 8000 already in use"**
+
+**🪟 Windows:**
+```powershell
+# Encontrar proceso usando puerto 8000
+netstat -ano | findstr :8000
+
+# Matar proceso (reemplaza PID con el número encontrado)
+taskkill /PID <PID> /F
+```
+
+**🐧 Linux / 🍎 macOS:**
+```bash
+# Encontrar proceso
+lsof -ti:8000
+
+# Matar proceso
+kill -9 $(lsof -ti:8000)
+```
+
+---
+
+#### **❌ Error: Frontend no conecta con Backend**
+
+**Verificar VITE_API_URL:**
+```bash
+# En frontend/.env
+VITE_API_URL=http://localhost:8000
+
+# NO usar https, NO añadir /api al final
+```
+
+**Verificar CORS:**
+El backend debe permitir peticiones desde `http://localhost:5173`. Esto ya está configurado en `backend/main.py`
 
 ---
 
@@ -226,25 +343,51 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ### **Iniciar todo el stack de desarrollo:**
 
-**En Windows PowerShell (2 terminales):**
+#### **🪟 Windows PowerShell (2 terminales)**
 ```powershell
-# Terminal 1 - Backend
+# ===== TERMINAL 1 - Backend =====
+cd "C:\ruta\a\tu\ADD4U"
 .\.venv\Scripts\Activate.ps1
-uvicorn backend.main:app --reload
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
-# Terminal 2 - Frontend
-cd frontend
+# ===== TERMINAL 2 - Frontend =====
+cd "C:\ruta\a\tu\ADD4U\frontend"
 npm run dev
 ```
 
-**En Linux/macOS/Git Bash (2 terminales):**
-```bash
-# Terminal 1 - Backend
-source .venv/bin/activate
-uvicorn backend.main:app --reload
+#### **🪟 Windows CMD (2 terminales)**
+```cmd
+REM ===== TERMINAL 1 - Backend =====
+cd C:\ruta\a\tu\ADD4U
+.venv\Scripts\activate.bat
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
-# Terminal 2 - Frontend
-cd frontend
+REM ===== TERMINAL 2 - Frontend =====
+cd C:\ruta\a\tu\ADD4U\frontend
+npm run dev
+```
+
+#### **🐧 Linux / 🍎 macOS (Bash/Zsh - 2 terminales)**
+```bash
+# ===== TERMINAL 1 - Backend =====
+cd ~/ruta/a/tu/ADD4U
+source .venv/bin/activate
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+# ===== TERMINAL 2 - Frontend =====
+cd ~/ruta/a/tu/ADD4U/frontend
+npm run dev
+```
+
+#### **🪟 Windows Git Bash (2 terminales)**
+```bash
+# ===== TERMINAL 1 - Backend =====
+cd /c/ruta/a/tu/ADD4U
+source .venv/Scripts/activate
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+# ===== TERMINAL 2 - Frontend =====
+cd /c/ruta/a/tu/ADD4U/frontend
 npm run dev
 ```
 
@@ -312,49 +455,156 @@ graph TD
 
 ## 🏗️ **Arquitectura del Sistema**
 
+### **Vista de Alto Nivel**
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     MINI-CELIA ARCHITECTURE                     │
+│                    MINI-CELIA ARCHITECTURE                      │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│  │   REACT     │    │   FASTAPI   │    │  OPENAI     │        │
-│  │  Frontend   │◄──►│   Backend   │◄──►│   GPT-4     │        │
-│  │ (Port 5173) │    │ (Port 8000) │    │             │        │
-│  └─────────────┘    └─────────────┘    └─────────────┘        │
-│        │                   │                   │              │
-│        │                   │            ┌─────────────┐        │
-│        │                   └───────────►│    GROQ     │        │
-│        │                                │ Llama 3.1   │        │
-│        │                                └─────────────┘        │
-│        │                                                       │
-│        │            ┌─────────────┐    ┌─────────────┐        │
-│        └───────────►│  MONGODB    │    │   VECTOR    │        │
-│                     │  Database   │    │  Embeddings │        │
-│                     └─────────────┘    └─────────────┘        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+│  ┌──────────────┐         ┌──────────────┐                     │
+│  │   FRONTEND   │         │   BACKEND    │                     │
+│  │              │         │              │                     │
+│  │  React 18    │◄──HTTP─►│  FastAPI     │                     │
+│  │  Vite        │         │  Python 3.11 │                     │
+│  │  Tailwind    │         │  Async/Await │                     │
+│  │  Port 5173   │         │  Port 8000   │                     │
+│  └──────────────┘         └──────┬───────┘                     │
+│                                   │                             │
+│                    ┌──────────────┼──────────────┐             │
+│                    │              │              │             │
+│             ┌──────▼─────┐ ┌─────▼──────┐ ┌────▼─────┐       │
+│             │  LANGCHAIN │ │  MONGODB   │ │  OPENAI  │       │
+│             │ Orchestrator│ │  Database  │ │  GPT-4o  │       │
+│             │  LangGraph │ │  Atlas     │ │          │       │
+│             └──────┬─────┘ └────────────┘ └──────────┘       │
+│                    │                                           │
+│         ┌──────────┼───────────┐                              │
+│         │          │           │                              │
+│   ┌─────▼────┐ ┌──▼──────┐ ┌─▼──────────┐                   │
+│   │ RETRIEVER│ │GENERATOR│ │ VALIDATOR  │                   │
+│   │  Agent   │ │ Agents  │ │   Agent    │                   │
+│   │ (RAG)    │ │  A & B  │ │ (Schemas)  │                   │
+│   └──────────┘ └─────────┘ └────────────┘                   │
+│                                                               │
+│   ┌──────────────────────────────────────────────┐           │
+│   │        OBSERVABILITY & MONITORING            │           │
+│   │  ┌──────────┐  ┌──────────┐  ┌───────────┐  │           │
+│   │  │ LangFuse │  │ TruLens  │  │  Logging  │  │           │
+│   │  │ Tracing  │  │ Metrics  │  │  System   │  │           │
+│   │  └──────────┘  └──────────┘  └───────────┘  │           │
+│   └──────────────────────────────────────────────┘           │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-### **Stack Tecnológico:**
+### **🔄 Pipeline Completo: Generación de JN.1**
 
-**🎨 Frontend:**
-- **React 18** con hooks modernos
-- **Vite** para desarrollo rápido
-- **Tailwind CSS** para estilos
-- **Axios** para comunicación HTTP
+```
+[1] USUARIO                     [2] FRONTEND                [3] BACKEND
+     │                               │                           │
+     │ "Generar JN.1                 │                           │
+     │  para limpieza"               │                           │
+     └──────────────────────────────►│                           │
+                                     │ POST /jn/generate         │
+                                     │ {expediente_id,           │
+                                     │  user_text,               │
+                                     │  seccion: "JN.1"}         │
+                                     └──────────────────────────►│
+                                                                 │
+                        [4] ORCHESTRATOR (LangGraph)
+                                     │
+                    ┌────────────────┼────────────────┐
+                    │                │                │
+            [5] RETRIEVER      [6] PROMPT      [7] GENERATOR A
+             (RAG Agent)        MANAGER         (Estructurado)
+                    │                │                │
+                    │ Vector Search  │ Build Prompt   │ LLM GPT-4o
+                    │ MongoDB Atlas  │ A + context    │ → JSON_A
+                    │ Embeddings     │                │
+                    │                │                │
+                    └────────────────┴────────────────┘
+                                     │
+                            [8] VALIDATOR A
+                            (Schema Check)
+                                     │
+                              ┌──────┴──────┐
+                              │ ❌ Error?   │
+                              └──────┬──────┘
+                                     │ Sí
+                          [9] AUTO-REPAIR (max 2 retries)
+                                     │
+                              Regenera JSON_A
+                                     │
+                                     │ No (✅)
+                                     │
+                    ┌────────────────┼────────────────┐
+                    │                │                │
+           [10] GENERATOR B   [11] VALIDATOR B  [12] SAVE TO DB
+            (Narrativa)        (Coherence)       (MongoDB)
+                    │                │                │
+            LLM GPT-4o         JSON_A vs JSON_B       │
+            → JSON_B           Semantic check         │
+                    │                │                │
+                    └────────────────┴────────────────┘
+                                     │
+                          [13] RETURN TO FRONTEND
+                                     │
+                              JSON_A + JSON_B
+                                     │
+         ┌───────────────────────────┘
+         │
+[14] FRONTEND RENDER
+         │
+    ┌────┴─────┐
+    │ Display  │
+    │ Chat     │
+    │ Response │
+    └────┬─────┘
+         │
+[15] USER ACTIONS
+    │
+    ├─► 💾 Guardar
+    ├─► 📄 Exportar PDF
+    ├─► 📝 Exportar Word
+    └─► 🔄 Regenerar
+```
 
-**🚀 Backend:**
-- **FastAPI** con Python 3.11+
-- **Pydantic** para validación de datos
-- **Uvicorn** como servidor ASGI
-- **MongoDB** para persistencia
+### **⏱️ Tiempos de Ejecución**
 
-**🤖 IA & LLM:**
-- **OpenAI GPT-4** para generación estructurada
-- **Groq (Llama 3.1)** para narrativa
-- **LangChain** para orquestación
-- **Vector embeddings** para contexto
+| Fase | Tiempo Promedio | Descripción |
+|------|----------------|-------------|
+| Retriever (RAG) | ~1-2 seg | Búsqueda vectorial en MongoDB |
+| Generator A | ~3-5 seg | Generación JSON estructurado |
+| Validator A | ~100 ms | Validación + Auto-repair si es necesario |
+| Generator B | ~3-4 seg | Generación narrativa legal |
+| Validator B | ~100 ms | Validación de coherencia |
+| **TOTAL** | **~8-12 seg** | **Pipeline completo end-to-end** |
+
+### **🔑 Stack Tecnológico Detallado**
+
+| Capa | Tecnología | Función | Versión |
+|------|-----------|---------|---------|
+| **🎨 Frontend** | React | Interfaz de usuario | 18.x |
+| | Vite | Build tool + HMR | 5.x |
+| | Tailwind CSS | Estilos utility-first | 3.x |
+| | jsPDF | Generación PDF client-side | Latest |
+| | Axios | Cliente HTTP | Latest |
+| **🚀 Backend** | FastAPI | Framework web | 0.109+ |
+| | Python | Lenguaje | 3.11+ |
+| | Uvicorn | Servidor ASGI | Latest |
+| | Pydantic | Validación de datos | 2.x |
+| **🤖 IA Multi-Agente** | LangGraph | Orquestación de agentes | Latest |
+| | LangChain | Framework LLM | Latest |
+| | OpenAI GPT-4o | Generación estructurada | Latest |
+| | Groq Llama 3.1 | Generación narrativa | 70B |
+| **🔍 RAG** | SentenceTransformers | Embeddings vectoriales | all-MiniLM-L6-v2 |
+| | MongoDB Atlas | Vector search | 7.0+ |
+| **✅ Validación** | BinderSchemas | JSON Schema validation | Custom |
+| | OutputParser | Limpieza y parsing | Custom |
+| **📊 Observability** | LangFuse | Tracing distribuido | Cloud |
+| | TruLens | Métricas y evaluación | Latest |
+| **🗄️ Base de Datos** | MongoDB Atlas | Persistencia + Vector DB | 7.0+ |
 
 ---
 
@@ -552,131 +802,225 @@ Gracias a estas personas que han contribuido a este proyecto:
 ## ✨ **Características Principales**
 
 ### 🎨 **Interfaz de Usuario**
-- 💬 **Chat Inteligente**: Interfaz tipo ChatGPT optimizada para licitaciones
-- 📱 **Diseño Responsivo**: Perfecto en móvil, tablet y desktop
-- 🎯 **Acciones Rápidas**: 6 botones para tareas comunes integrados en el chat
-- 🔄 **Tiempo Real**: Respuestas instantáneas con indicador de estado
-- 🎭 **Sin Autenticación**: Acceso directo sin registros ni logins
+- 💬 **Chat Conversacional**: Interfaz tipo ChatGPT optimizada para licitaciones
+- 📱 **Diseño Responsivo**: Perfecto en móvil, tablet y desktop con Tailwind CSS
+- 📄 **Exportación PDF Multi-Sección**: Detecta automáticamente todas las secciones JN generadas (JN.1 a JN.5)
+- 💾 **Gestión de Borradores**: Sistema de guardado y carga de trabajos previos
+- 🎯 **Ejemplos Integrados**: Panel lateral con casos de uso reales
 
-### 🤖 **Inteligencia Artificial**
-- 🧠 **OpenAI GPT-4**: Generación de texto de alta calidad
-- 📚 **Especializado**: Entrenado específicamente en normativa española
-- 🔄 **Modo Offline**: Funciona con respuestas simuladas sin internet
-- 🎯 **Contexto Inteligente**: Entiende el contexto de licitaciones públicas
+### 🤖 **Sistema Multi-Agente (LangGraph)**
+- 🧠 **Orchestrator**: Coordina flujo completo de 8 pasos con LangGraph
+- 🔍 **Retriever Agent (RAG)**: Búsqueda vectorial en MongoDB con embeddings (score > 0.75)
+- 📝 **Generator A**: JSON estructurado (JSON_A) con campos validados
+- 📖 **Generator B**: Narrativa legal legible (JSON_B) con referencias normativas
+- ✅ **Validator Agent**: Validación automática con **auto-retry** (max 2 intentos)
+- 🔧 **Output Parser**: Limpieza HTML y parsing centralizado
+- 🧹 **Sanitizer**: Conversión automática de valores "faltantes" a campos vacíos
 
-### ⚡ **Generación Automática**
-- 📄 **Justificación de la Necesidad (JN)**: Sección completa en segundos
-- 🎯 **Acciones Específicas**: "Generar JN para [tipo de servicio]"
-- 📋 **Plantillas Inteligentes**: Adaptadas a diferentes tipos de licitación
-- ✅ **Cumplimiento Normativo**: Siguiendo LCSP y normativas EU
+### ⚡ **Validación Inteligente**
+- 📋 **BinderSchemas**: Validación contra JSON Schema con estructura nested
+- 🔄 **Auto-Repair**: Regeneración automática con prompts especializados si falla validación
+- 🎯 **Nested Fields**: Validación recursiva con dot notation (ej: `secciones_JN.objeto`)
+- ⚠️ **Warnings**: Sistema de alertas para campos incompletos sin bloquear flujo
+- � **Tasa de Éxito**: Del 70% al **95%** con auto-retry implementado
+
+### 📊 **Observabilidad y Monitoreo**
+- 🔍 **LangFuse**: Tracing distribuido de todas las invocaciones LLM con contexto
+- 📈 **TruLens**: Métricas de evaluación y dashboard local (puerto 8501)
+- � **Health Endpoint**: `/health` con timestamp UTC y status del servicio
+- 📝 **Logs Estructurados**: Sistema de logging con niveles configurables
+
+### 🚀 **Optimizaciones de Rendimiento**
+- ⚡ **Local Cache**: Modelos de embeddings en `./models_cache` (reduce startup de 30s a <3s)
+- 🔄 **Async/Await**: Backend completamente asíncrono con FastAPI
+- 📦 **HuggingFace Timeout Fix**: Sin dependencia de descarga en cada inicio
+- 🎯 **Vector Search**: MongoDB Atlas con índices optimizados (150 candidates, top 5)
+
+### 📄 **Cumplimiento Normativo**
+- ✅ **LCSP**: Ley 9/2017 de Contratos del Sector Público
+- ✅ **RGPD**: Reglamento (UE) 2016/679 de Protección de Datos
+- ✅ **DNSH**: Do No Significant Harm (EU Green Deal)
+- ✅ **Directiva 2014/24/UE**: Contratación pública europea
 
 ---
 
 ## 📂 **Estructura del Proyecto**
+
 ```
 ADD4U/
-├── 📁 backend/                          # 🔧 API FastAPI + IA
-│   ├── agents/                          # 🤖 Agentes de IA especializados
-│   │   ├── jn_agent.py                  # Agente para Justificación de Necesidad
-│   │   └── __pycache__/                 # Cache de Python
-│   ├── api/                             # 🛣️ Rutas y endpoints
-│   │   ├── __init__.py
-│   │   ├── jn_routes.py                 # Endpoints de JN
-│   │   ├── routes_expedientes.py        # Rutas de expedientes
-│   │   └── __pycache__/
-│   ├── core/                            # ⚡ Lógica central del sistema
-│   │   ├── __init__.py
-│   │   ├── config.py                    # Configuración global
-│   │   ├── logic_jn.py                  # Lógica de negocio JN
-│   │   └── __pycache__/
-│   ├── database/                        # 🗄️ Conexiones y esquemas DB
-│   │   ├── init_expedientes.py          # Inicialización de expedientes
-│   │   ├── mongo.py                     # Configuración MongoDB
-│   │   └── __pycache__/
-│   ├── models/                          # 📋 Esquemas de datos
-│   │   ├── __init__.py
-│   │   ├── schemas_jn.py                # Schemas para JN
-│   │   └── __pycache__/
-│   ├── prompts/                         # 💭 Prompts optimizados para IA
-│   │   ├── jn_prompts.py                # Prompts específicos de JN
-│   │   └── __pycache__/
-│   ├── main.py                          # 🚀 Punto de entrada FastAPI
-│   └── __init__.py
-├── 📁 frontend/                         # 🎨 Aplicación React
-│   ├── src/                             # Código fuente
-│   │   ├── components/                  # 🧩 Componentes reutilizables
-│   │   │   ├── ChatSection.jsx          # Chat principal con IA
-│   │   │   ├── DraftModal.jsx           # Modal de borradores
-│   │   │   ├── ExportMenu.jsx           # Menú de exportación
-│   │   │   ├── Header.jsx               # Header de la app
-│   │   │   └── Toast.jsx                # Notificaciones
-│   │   ├── contexts/                    # 🔄 Gestores de estado global
-│   │   │   └── AppStateContext.jsx      # Context principal
-│   │   ├── hooks/                       # 🪝 Hooks personalizados
-│   │   ├── pages/                       # 📄 Páginas principales
-│   │   │   └── MainApp.jsx              # Aplicación principal
-│   │   ├── services/                    # 🌐 Conexión con APIs
-│   │   │   └── apiService.js            # Servicio API principal
-│   │   ├── utils/                       # 🛠️ Utilidades
-│   │   ├── App.jsx                      # Componente raíz
-│   │   ├── index.css                    # Estilos globales
-│   │   └── main.jsx                     # Punto de entrada React
-│   ├── index.html                       # HTML principal
-│   ├── package.json                     # Dependencias npm
-│   ├── postcss.config.js               # Config PostCSS
-│   ├── tailwind.config.js              # Config Tailwind CSS
-│   ├── vite.config.js                  # Config Vite
-│   └── __init__.py
-├── 📁 docs/                            # 📚 Documentación técnica
-│   ├── diagrams/                        # Diagramas del sistema
-│   │   ├── bbdd_flujo.md
-│   │   ├── flujo_operativo.md
-│   │   ├── global_scheme.png
-│   │   ├── jn_operativo.md
-│   │   ├── jn_zoom.png
-│   │   ├── ejemplos_json/               # Ejemplos de estructuras JSON
-│   │   └── sections/                    # Documentación por secciones
-│   │       └── jn/                      # Específico de JN
-├── 📁 data/                            # 📊 Datos de entrenamiento y ejemplos
-├── 📁 outputs/                         # 📤 Archivos generados por el sistema
-├── 📁 tests/                           # 🧪 Tests automatizados
-├── 📁 .venv/                           # 🐍 Entorno virtual de Python
-├── 📄 .env                             # 🔐 Variables de entorno (local)
-├── 📄 .env.example                     # 📄 Plantilla de variables de entorno
-├── 📄 .gitignore                       # 🚫 Archivos ignorados por Git
-├── 📄 README.md                        # 📖 Este archivo
-└── 📄 requirements.txt                 # 📦 Dependencias Python
+│
+├── 📁 backend/                              # 🔧 API y Lógica del Sistema
+│   │
+│   ├── 📁 agents/                           # 🤖 Agentes de IA (LangGraph)
+│   │   ├── orchestrator.py                  # Orquestador principal (LangGraph)
+│   │   ├── retriever_agent.py               # RAG: Recuperación de contexto normativo
+│   │   ├── prompt_manager.py                # Gestor de prompts dinámicos
+│   │   ├── prompt_refiner.py                # Refinador de prompts por sección
+│   │   ├── validator.py                     # Validador con auto-retry
+│   │   │
+│   │   ├── 📁 generators/                   # Generadores de contenido
+│   │   │   ├── generator_a.py               # Genera JSON estructurado (JSON_A)
+│   │   │   ├── generator_b.py               # Genera narrativa legal (JSON_B)
+│   │   │   └── output_parser.py             # Parser centralizado de outputs
+│   │   │
+│   │   ├── 📁 schemas/                      # Esquemas de validación
+│   │   │   └── json_schemas.py              # BinderSchemas (JSON_A, JSON_B)
+│   │   │
+│   │   └── 📁 nodes/                        # Nodos del grafo LangGraph
+│   │
+│   ├── 📁 api/                              # 🛣️ Endpoints REST
+│   │   ├── jn_routes.py                     # POST /jn/generate, GET /jn/status
+│   │   ├── routes_expedientes.py            # CRUD expedientes
+│   │   ├── routes_normativa.py              # Gestión normativa Golden
+│   │   └── routes_outputs.py                # Historial de outputs generados
+│   │
+│   ├── 📁 core/                             # ⚡ Lógica Central
+│   │   ├── config.py                        # Configuración global (Settings)
+│   │   ├── llm_client.py                    # Cliente OpenAI/Groq
+│   │   ├── logic_jn.py                      # Lógica de negocio JN
+│   │   ├── langfuse_client.py               # Cliente trazabilidad LangFuse
+│   │   ├── trulens_client.py                # Cliente métricas TruLens
+│   │   └── trulens_metrics.py               # Definición de métricas
+│   │
+│   ├── 📁 database/                         # 🗄️ Persistencia MongoDB
+│   │   ├── mongo.py                         # Configuración cliente AsyncMongo
+│   │   ├── init_expedientes.py              # Inicialización BD expedientes
+│   │   ├── init_normativa.py                # Inicialización BD normativa
+│   │   ├── init_outputs.py                  # Inicialización BD outputs
+│   │   ├── outputs_repository.py            # Repositorio de outputs
+│   │   └── process_normativa_global.py      # Procesamiento embeddings
+│   │
+│   ├── 📁 models/                           # 📋 Esquemas Pydantic
+│   │   └── schemas_jn.py                    # Modelos de datos JN
+│   │
+│   ├── 📁 prompts/                          # 💭 Prompts Optimizados
+│   │   ├── jn_prompts.py                    # Prompts específicos JN
+│   │   └── 📁 templates/                    # Plantillas de prompts
+│   │
+│   ├── 📁 tests/                            # 🧪 Tests Unitarios
+│   │   ├── test_orchestrator_e2e.py         # Test end-to-end
+│   │   ├── test_validator_improvements.py   # Tests validador
+│   │   ├── test_retriever.py                # Tests RAG
+│   │   └── test_jn_validator.py             # Tests validación JN
+│   │
+│   ├── 📁 utils/                            # 🛠️ Utilidades
+│   │   └── dict_utils.py                    # Helpers manipulación diccionarios
+│   │
+│   ├── 📁 trulens_data/                     # 📊 Base de datos TruLens
+│   │   └── trulens.db                       # SQLite DB para métricas
+│   │
+│   └── main.py                              # 🚀 Punto de entrada FastAPI
+│
+├── 📁 frontend/                             # 🎨 Aplicación React
+│   │
+│   ├── 📁 src/
+│   │   ├── 📁 components/                   # 🧩 Componentes React
+│   │   │   ├── ChatSection.jsx              # Chat principal con IA
+│   │   │   ├── ClarificationPrompts.jsx     # Prompts de clarificación
+│   │   │   ├── DraftModal.jsx               # Modal de borradores
+│   │   │   ├── ExportMenu.jsx               # Menú exportación (PDF/Word)
+│   │   │   ├── LicitacionExamples.jsx       # Ejemplos de licitaciones
+│   │   │   └── Toast.jsx                    # Sistema de notificaciones
+│   │   │
+│   │   ├── 📁 contexts/                     # 🔄 Context API
+│   │   │   └── AppStateContext.jsx          # Estado global aplicación
+│   │   │
+│   │   ├── 📁 pages/                        # 📄 Páginas
+│   │   │   └── MainApp.jsx                  # Página principal
+│   │   │
+│   │   ├── 📁 services/                     # 🌐 Servicios API
+│   │   │   └── apiService.js                # Cliente HTTP (Axios)
+│   │   │
+│   │   ├── 📁 utils/                        # 🛠️ Utilidades
+│   │   │   └── pdfGenerator.js              # Generador PDF (jsPDF)
+│   │   │
+│   │   ├── App.jsx                          # Componente raíz
+│   │   ├── index.css                        # Estilos globales
+│   │   └── main.jsx                         # Entrada React
+│   │
+│   ├── index.html                           # HTML principal
+│   ├── package.json                         # Dependencias NPM
+│   ├── postcss.config.js                    # Configuración PostCSS
+│   ├── tailwind.config.js                   # Configuración Tailwind
+│   └── vite.config.js                       # Configuración Vite
+│
+├── 📁 docs/                                 # 📚 Documentación
+│   ├── 📁 diagrams/flujos/                  # Diagramas de flujo
+│   │   ├── jn_operativo.md                  # Flujo operativo JN
+│   │   ├── flujo_operativo.md               # Flujo general
+│   │   └── bbdd_flujo.md                    # Flujo base de datos
+│   │
+│   ├── 📁 diagrams/ejemplos_json/           # Ejemplos de estructuras
+│   │   ├── output_jsonA.json                # Ejemplo JSON_A
+│   │   ├── output_jsonB.json                # Ejemplo JSON_B
+│   │   ├── expediente.json                  # Ejemplo expediente
+│   │   └── normativa_global.json            # Ejemplo normativa
+│   │
+│   ├── guia_endpoints_orquestador.md        # Guía API
+│   ├── server_setup.md                      # Setup servidor
+│   ├── mejoras_sistema_validacion.md        # Doc mejoras validación
+│   └── Mini-CELIA-Final-Documento-Informativo.md  # 📖 Doc completo para entender proyecto
+│
+├── 📁 outputs/                              # 📤 Archivos generados
+├── 📁 tests/                                # 🧪 Tests de integración
+│
+├── 📄 .env                                  # 🔐 Variables de entorno (local)
+├── 📄 .env.example                          # 📄 Plantilla variables entorno
+├── 📄 .gitignore                            # 🚫 Archivos ignorados Git
+├── 📄 README.md                             # 📖 Este documento
+├── 📄 requirements.txt                      # 📦 Dependencias Python
+└── 📄 package.json                          # 📦 Metadatos proyecto
 ```
+
+### 📌 **Convenciones de Nomenclatura**
+
+- **`*_agent.py`**: Agentes individuales de LangChain/LangGraph
+- **`*_routes.py`**: Endpoints FastAPI agrupados por dominio
+- **`schemas_*.py`**: Modelos Pydantic de validación
+- **`*.jsx`**: Componentes React
+- **`*_prompts.py`**: Colecciones de prompts para IA
 
 ---
 
 ## 💡 **Cómo Usar Mini-CELIA**
 
-### 🎯 **Acciones Rápidas Integradas**
-Al abrir la aplicación, verás 6 botones de acciones rápidas:
+### 🎯 **Ejemplos por Categoría**
+Al abrir la aplicación, encontrarás ejemplos organizados en 4 categorías:
 
-1. 🏗️ **"Generar JN Obras"** - Para licitaciones de construcción
-2. 🛠️ **"Generar JN Servicios"** - Para servicios generales
-3. 📦 **"Generar JN Suministros"** - Para compra de materiales
-4. 🔧 **"Generar JN Mantenimiento"** - Para servicios de mantenimiento
-5. 💻 **"Generar JN Tecnología"** - Para soluciones IT
-6. 🎓 **"Generar JN Formación"** - Para servicios educativos
+#### **📦 Servicios**
+- **Servicios de Limpieza**: Ejemplo para limpieza de edificios municipales
+- **Mantenimiento Informático**: Soporte técnico para equipos IT
 
-### 💬 **Chat Natural**
-También puedes escribir directamente en el chat:
+#### **🏗️ Obras**
+- **Rehabilitación de Edificio**: Restauración de edificios históricos
+- **Pavimentación Urbana**: Obras de mejora de calles y aceras
+
+#### **📋 Suministros**
+- **Equipos Informáticos**: Renovación de parque informático
+- **Mobiliario de Oficina**: Adquisición de mesas, sillas y archivadores
+
+#### **💼 Consultoría**
+- **Auditoría Energética**: Análisis y mejora de eficiencia energética
+- **Asesoría Legal**: Servicios jurídicos especializados
+
+> **💡 Consejo**: Haz clic en cualquier ejemplo para prellenarlo en el chat, luego personalízalo con tus datos específicos.
+
+### 💬 **Chat Conversacional**
+Escribe directamente en el chat para obtener ayuda personalizada:
 ```
-"Necesito una justificación para contratar servicios de limpieza"
-"Genera una JN para obras de mejora en un colegio"
-"Ayúdame con la documentación para comprar mobiliario de oficina"
+"Necesito una justificación para contratar servicios de limpieza de 5 edificios"
+"Genera documentación para rehabilitar un edificio histórico de 1500m²"
+"Ayúdame con la contratación de 50 ordenadores portátiles"
+"Quiero hacer una auditoría energética de 10 edificios"
 ```
 
-### 📋 **Flujo Típico de Uso**
-1. 🚀 **Abrir**: Ejecutar backend y frontend por separado
-2. 🎯 **Seleccionar**: Hacer clic en una acción rápida o escribir en el chat
-3. 📝 **Especificar**: Proporcionar detalles del proyecto/servicio
-4. ⚡ **Generar**: La IA crea la documentación automáticamente
-5. 📄 **Revisar**: Revisar y ajustar el contenido generado
-6. 💾 **Exportar**: Guardar en el formato deseado
+### 📋 **Flujo de Trabajo**
+1. 🚀 **Iniciar**: Abre la aplicación en `http://localhost:5173`
+2. 🎯 **Seleccionar**: Haz clic en un ejemplo o escribe tu consulta
+3. 📝 **Personalizar**: Ajusta cantidades, ubicaciones y requisitos específicos
+4. ⚡ **Generar**: La IA procesa tu solicitud y genera la documentación completa
+5. 📄 **Revisar**: Verifica el contenido generado en formato JSON estructurado
+6. 💾 **Exportar**: Descarga en PDF o Word con un clic
 
 
 
@@ -692,21 +1036,15 @@ También puedes escribir directamente en el chat:
 - 🎯 Personalización por tipo de licitación
 - ✅ Cumplimiento normativo automático
 
-#### **Modo Offline** (Sin Internet)
-- 🔄 Respuestas simuladas profesionales
-- 📄 Plantillas predefinidas
-- ⚡ Funcionamiento sin dependencias externas
-- 💼 Perfecto para demostraciones
-
 ### 📊 **Indicadores de Estado**
 - 🟢 **Verde**: Conectado a OpenAI
 - 🔴 **Rojo**: Modo offline/simulado
 - ⏳ **Amarillo**: Cargando respuesta
 
 ### 🎨 **Diseño y UX**
-- 🌈 **Tema Corporativo**: Rojo y blanco elegante
+- 🌈 **Tema Corporativo**: Amarillo y blanco elegante
 - ✨ **Efectos Glass**: Interfaces modernas y atractivas
-- 🎭 **Iconos SVG**: Profesionales sin emojis
+- 🎭 **Iconos SVG**: Profesionales 
 - 📱 **Mobile First**: Optimizado para dispositivos móviles
 
 ---
@@ -789,44 +1127,6 @@ Si encuentras algún problema o tienes sugerencias:
 - 📖 **Documentación API:** `http://localhost:8000/docs`
 - 🐛 **Reportar Bugs:** [GitHub Issues]
 - 💬 **Discusiones:** [GitHub Discussions]
-
-### **FAQ (Preguntas Frecuentes):**
-
-**❓ ¿Funciona sin internet?**
-✅ Sí, tiene modo offline con contenido mock
-
-**❓ ¿Es gratuito?**
-✅ El software es open-source. Solo pagas las APIs de IA que uses
-
-**❓ ¿Cumple la normativa española?**
-✅ Sí, está diseñado específicamente para LCSP española
-
-**❓ ¿Puedo personalizarlo para mi organización?**
-✅ Completamente personalizable y open-source
-
-**❓ ¿El backend no se conecta?**
-```bash
-# Verificar Python instalado
-python --version
-
-# Verificar puerto 8000 libre
-netstat -an | findstr 8000
-```
-
-**❓ ¿El frontend no carga?**
-```bash
-# Verificar Node.js instalado
-node --version
-
-# Limpiar caché y reinstalar
-npm cache clean --force
-npm install
-```
-
-**❓ ¿OpenAI no responde?**
-- 🔑 Verificar API Key en archivo `.env`
-- 💳 Comprobar créditos disponibles en OpenAI
-- 🌐 Verificar conexión a internet
 
 ### 📧 **Contacto**
 Para consultas técnicas avanzadas o implementaciones empresariales, contacta con el equipo de desarrollo.

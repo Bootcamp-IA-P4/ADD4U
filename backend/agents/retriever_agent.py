@@ -28,11 +28,30 @@ VSEARCH_NUM_CANDIDATES = int(os.getenv("VSEARCH_NUM_CANDIDATES", "150"))
 VSEARCH_LIMIT = int(os.getenv("VSEARCH_LIMIT", "5"))
 MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "4000"))  # recorta payload
 
+# Cache local para modelos (evita timeouts de HuggingFace)
+LOCAL_CACHE_DIR = os.getenv("SENTENCE_TRANSFORMERS_HOME", "./models_cache")
+
 class RetrieverAgent:
     def __init__(self):
         if not MONGO_URI:
             raise RuntimeError("MONGO_URI no está definido en .env")
-        self.model = SentenceTransformer(MODEL_NAME)
+        
+        # Configurar cache local para evitar descargas repetidas
+        os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+        print(f"[Retriever] Usando cache local: {LOCAL_CACHE_DIR}")
+        
+        try:
+            self.model = SentenceTransformer(
+                MODEL_NAME,
+                cache_folder=LOCAL_CACHE_DIR,
+                device='cpu'  # Puede cambiarse a 'cuda' si hay GPU
+            )
+            print(f"[Retriever] Modelo cargado: {MODEL_NAME}")
+        except Exception as e:
+            print(f"⚠️ Error cargando modelo desde HuggingFace: {e}")
+            print(f"💡 Tip: Descarga el modelo manualmente o usa OpenAI embeddings")
+            raise
+        
         self.client = AsyncIOMotorClient(MONGO_URI)
         self.collection = self.client[DB_NAME][COLLECTION_NAME]
 

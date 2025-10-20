@@ -150,3 +150,12 @@ app.log
 backend/trulens_data/
 *.db
 default.sqlite
+
+# -----------------------
+# HuggingFace / Models Cache
+# -----------------------
+models_cache/
+./models_cache/
+backend/models_cache/
+.cache/huggingface/
+.cache/torch/
