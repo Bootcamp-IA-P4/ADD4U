@@ -65,7 +65,7 @@ Mini-CELIA automatiza el proceso completo:
 
 ### **1.1 Clonar el Repositorio**
 ```bash
-git clone <tu-repositorio>
+git clone https://github.com/Bootcamp-IA-P4/ADD4U.git
 cd ADD4U
 ```
 
