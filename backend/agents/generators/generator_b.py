@@ -72,8 +72,6 @@ class GeneratorB:
             structured_data_str = json.dumps(structured_data, ensure_ascii=False, indent=2)
             if len(structured_data_str) > 2000:
                 structured_data_str = structured_data_str[:2000] + "\n...[datos truncados por longitud]"
-            else:
-                structured_data_str = structured_data_str
 
             # === Construcción avanzada del prompt narrativo ===
             full_prompt = f"""
