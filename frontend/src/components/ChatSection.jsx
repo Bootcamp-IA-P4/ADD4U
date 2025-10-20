@@ -185,7 +185,7 @@ const ChatSection = () => {
       
       // Guardar estado para esperar la descripción
       setConversationState({
-        waitingFor: 'user_description',
+        waitingFor: 'user_text',
         selectedJNType: action,
         expediente_id: autoExpedienteId,
         user_text: null
