@@ -3,6 +3,7 @@ import { useAppState } from '../contexts/AppStateContext'
 import apiService from '../services/apiService'
 import LicitacionExamples from './LicitacionExamples'
 import ClarificationPrompts from './ClarificationPrompts'
+import { generateJNPDF } from '../utils/pdfGenerator'
 
 const ChatSection = () => {
   const { state, addMessage, escapeHtml } = useAppState()
@@ -402,6 +403,103 @@ const ChatSection = () => {
     }, 1600)
   }
 
+  const handleDownloadPDF = () => {
+    // Extraer expediente_id
+    let expedienteId = conversationState.expediente_id || 'EXPEDIENTE'
+    
+    if (!expedienteId || expedienteId === 'EXPEDIENTE') {
+      const allBotMessages = state.chat.filter(m => m.role === 'bot')
+      for (const msg of allBotMessages) {
+        const match = msg.content.match(/Expediente:\s*<\/strong>\s*([A-Z0-9_-]+)/i)
+        if (match) {
+          expedienteId = match[1]
+          break
+        }
+      }
+    }
+    
+    // Extraer todas las secciones JN generadas (JN.1 a JN.5)
+    const jnSections = []
+    const botMessages = state.chat.filter(m => m.role === 'bot')
+    
+    // Buscar secciones JN.1, JN.2, JN.3, JN.4, JN.5
+    const sectionPatterns = [
+      { id: 'JN.1', title: 'Objeto y Alcance', keywords: ['objeto', 'alcance', 'ámbito'] },
+      { id: 'JN.2', title: 'Justificación', keywords: ['justificación', 'necesidad', 'motivo'] },
+      { id: 'JN.3', title: 'Antecedentes', keywords: ['antecedentes', 'contexto', 'situación'] },
+      { id: 'JN.4', title: 'Requisitos', keywords: ['requisitos', 'criterios', 'condiciones'] },
+      { id: 'JN.5', title: 'Presupuesto', keywords: ['presupuesto', 'económico', 'coste'] }
+    ]
+    
+    // Intentar detectar cada sección en los mensajes
+    botMessages.forEach(msg => {
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = msg.content
+      const cleanText = (tempDiv.textContent || tempDiv.innerText || '').trim()
+      
+      // Buscar indicador explícito de sección (JN.X)
+      const explicitMatch = cleanText.match(/JN\.(\d)/i)
+      if (explicitMatch) {
+        const sectionNum = explicitMatch[1]
+        const sectionId = `JN.${sectionNum}`
+        const pattern = sectionPatterns.find(p => p.id === sectionId)
+        
+        if (pattern && cleanText.length > 100) {
+          // Extraer solo la narrativa, eliminar metadatos y confirmaciones
+          let narrative = cleanText
+            .replace(/Expediente:.*?\n/gi, '')
+            .replace(/Sección:.*?\n/gi, '')
+            .replace(/Generando.*?\n/gi, '')
+            .replace(/Información completa recibida.*?\n/gi, '')
+            .replace(/Tipo:.*?\n/gi, '')
+            .replace(/Descripción:.*?\n/gi, '')
+            .trim()
+          
+          if (narrative.length > 50 && !jnSections.find(s => s.id === sectionId)) {
+            jnSections.push({
+              id: sectionId,
+              title: pattern.title,
+              content: narrative
+            })
+          }
+        }
+      }
+    })
+    
+    // Si no se detectaron secciones explícitas, usar el último mensaje como JN.1
+    if (jnSections.length === 0) {
+      const lastBotMessage = botMessages[botMessages.length - 1]
+      if (lastBotMessage) {
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = lastBotMessage.content
+        const cleanText = (tempDiv.textContent || tempDiv.innerText || '').trim()
+        
+        if (cleanText.length > 100) {
+          jnSections.push({
+            id: 'JN.1',
+            title: 'Justificación de la Necesidad',
+            content: cleanText
+          })
+        }
+      }
+    }
+    
+    if (jnSections.length === 0) {
+      showToast('⚠️ No hay secciones JN generadas para descargar')
+      return
+    }
+    
+    // Generar el PDF con todas las secciones
+    try {
+      generateJNPDF(expedienteId, jnSections)
+      const sectionList = jnSections.map(s => s.id).join(', ')
+      showToast(`✅ PDF descargado: ${expedienteId}.pdf (${sectionList})`)
+    } catch (error) {
+      console.error('Error al generar PDF:', error)
+      showToast('❌ Error al generar el PDF')
+    }
+  }
+
   return (
     <section className="w-full h-full flex flex-col">
       {/* Header interno con logo y botones - FONDO BLANCO */}
@@ -424,6 +522,19 @@ const ChatSection = () => {
             className="px-2 py-1 rounded-lg border border-brand-green bg-white text-brand-green text-xs font-semibold hover:bg-brand-green hover:text-white transition-all duration-200"
           >
             Guardar
+          </button>
+          
+          <button 
+            onClick={handleDownloadPDF} 
+            className="px-2 py-1 rounded-lg border border-red-500 bg-white text-red-500 text-xs font-semibold hover:bg-red-500 hover:text-white transition-all duration-200 flex items-center gap-1"
+            title="Descargar JN.1 en PDF"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span className="hidden sm:inline">PDF</span>
           </button>
           
           <button 

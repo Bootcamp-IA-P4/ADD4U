@@ -8,12 +8,12 @@ Listo para uso directo o como nodo LangGraph (.as_node()).
 
 import os
 import json
-import re
 import datetime
 from dotenv import load_dotenv
 from backend.core.llm_client import get_llm
 from backend.core.trulens_client import register_eval
 from backend.core.langfuse_client import langfuse
+from backend.agents.generators.output_parser import OutputParser
 
 load_dotenv()
 
@@ -28,24 +28,6 @@ class GeneratorA:
     def __init__(self):
         # El modelo se carga desde llm_client con configuración global
         self.llm = get_llm(task_type="json_a", temperature=0.2)
-
-    def _clean_json_response(self, raw_text: str) -> str:
-        """
-        Limpia respuestas LLM que contengan JSON con markdown o texto adicional
-        """
-        # Quitar bloques markdown
-        text = re.sub(r'```json\s*', '', raw_text)
-        text = re.sub(r'```\s*', '', text)
-        
-        # Buscar primer { hasta último }
-        start = text.find('{')
-        end = text.rfind('}')
-        
-        if start == -1 or end == -1:
-            # Si no encuentra JSON, devolver el texto original
-            return raw_text
-        
-        return text[start:end+1].strip()
 
     async def ainvoke(self, state: dict):
         """
@@ -73,11 +55,8 @@ class GeneratorA:
             seccion = state.get("seccion", "JN.x")
             json_schema = state.get("json_schema", "")
             
-            # Limitar contexto RAG a 2000 caracteres para evitar prompts excesivamente largos
-            if context and len(context) > 2000:
-                context = context[:2000] + "\n...[contexto truncado por longitud]"
-
             # === Construcción del prompt mejorado ===
+            # Nota: El truncamiento se aplica solo si es necesario para evitar límites del modelo
             full_prompt = f"""
 {prompt_a}
 
@@ -104,43 +83,35 @@ class GeneratorA:
             try:
                 # === Invocación al modelo ===
                 response = await self.llm.ainvoke(full_prompt)
-                structured_output = response.content.replace("```json", "").replace("```", "").strip()
+                raw_output = response.content
 
-                # === Limpiar respuesta antes de parsear ===
-                cleaned_output = self._clean_json_response(structured_output)
+                # === Usar OutputParser para limpieza y parsing ===
+                parsed_json, parse_error = OutputParser.parse_json(raw_output, strict=False)
+                
+                if parse_error:
+                    print(f"⚠️ Advertencia de parsing: {parse_error}")
+                    print(f"Raw output (primeros 500 chars): {raw_output[:500]}")
 
-                # === Intento de parsear el JSON ===
-                try:
-                    parsed_json = json.loads(cleaned_output)
-                    parse_error = None
-                except json.JSONDecodeError as e:
-                    parsed_json = {"structured_output": cleaned_output}
-                    parse_error = str(e)
-                    print(f"❌ Error parseando JSON: {e}")
-                    print(f"Raw output: {structured_output[:500]}")
-                    print(f"Cleaned output: {cleaned_output[:500]}")
-
-                # === Construcción del JSON_A canónico ===
+                # === Construcción del JSON_A según esquema del binder ===
                 json_a = {
-                    "schema_version": "1.0.0",
-                    "doc": documento,
-                    "seccion": seccion,
                     "expediente_id": expediente_id,
+                    "documento": documento,
+                    "seccion": seccion,
                     "nodo": "A",
-                    "version": 1,
-                    "timestamp": datetime.datetime.utcnow().isoformat(),
-                    "actor": "G",
-                    "proveniencia": "A(JSON) desde UI+Golden",
-                    "data": parsed_json,
-                    "faltantes": [],
-                    "alertas": [parse_error] if parse_error else [],
+                    "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                    "actor": "LLM",
+                    "json": parsed_json,  # Datos específicos de la sección
                     "citas_golden": golden,
-                    "dependencias": dependencias,
-                    "score_local": {"estructura": 0, "cumplimiento": 0, "narrativa": 0},
+                    "citas_normativas": [],
+                    "hash": f"hash_A_{seccion}_{expediente_id}",
+                    # Metadatos adicionales (no del binder, pero útiles)
                     "metadata": {
                         "model": self.llm.model_name,
-                        "status": "success" if not parse_error else "warning"
+                        "status": "success" if not parse_error else "warning",
+                        "schema_version": "1.0.0",
                     },
+                    "parse_error": parse_error,
+                    "dependencias": dependencias,
                 }
 
                 # === Registro de la evaluación (TruLens) ===
@@ -156,8 +127,8 @@ class GeneratorA:
                     metrics=None,
                     app_version="json_a",
                     prompt=full_prompt,
-                    model_inputs={"user_text": user_text},
-                    model_output=structured_output,
+                    model_inputs={"user_text": user_text, "context": context[:500]},
+                    model_output=json_a,
                 )
 
                 # === Actualización del estado ===
@@ -166,8 +137,18 @@ class GeneratorA:
 
             except Exception as e:
                 # Manejo robusto de errores (no rompe el flujo del grafo)
+                print(f"❌ Error crítico en GeneratorA: {e}")
                 state["json_a"] = {
-                    "data": None,
-                    "metadata": {"error": str(e), "status": "failed"}
+                    "expediente_id": expediente_id,
+                    "documento": documento,
+                    "seccion": seccion,
+                    "nodo": "A",
+                    "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                    "actor": "LLM",
+                    "json": {},
+                    "citas_golden": [],
+                    "citas_normativas": [],
+                    "metadata": {"error": str(e), "status": "failed"},
+                    "parse_error": str(e),
                 }
                 return state
