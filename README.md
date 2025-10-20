@@ -1,5 +1,8 @@
 # 🤖 Mini-CELIA — Copilot Inteligente de Licitaciones para la Administración
-
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/bcc32bb3-f826-44a9-955c-4f369ae98a77" alt="Imagen 1" width="600" style="margin-right: 20px;" />
+  <img src="https://github.com/user-attachments/assets/af42f077-9189-456c-b93b-4b0c81d09278" alt="Imagen 2" width="220" />
+</div>
 <div align="center">
 
 **Sistema de IA especializado que automatiza la generación de documentación para licitaciones públicas en España, reduciendo tiempos de semanas a minutos con cumplimiento normativo garantizado**
@@ -739,54 +742,52 @@ COPY --from=0 /app/dist /usr/share/nginx/html
 
 <div align="center">
 
-Gracias a estas personas que han contribuido a este proyecto:
-
 <table>
   <tr>
     <td align="center">
-      <a href="https://github.com/contributor1">
-        <img src="https://github.com/identicons/contributor1.png" width="100px;" alt="Contributor 1"/>
+      <a href="https://github.com/stephyangeles">
+        <img src="https://github.com/stephyangeles.png" width="100px;" alt="stephyangeles"/>
         <br />
-        <sub><b>Contribuidor 1</b></sub>
+        <sub><b>stephyangeles</b></sub>
       </a>
       <br />
-      <sub>Frontend & UI/UX</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/contributor2">
-        <img src="https://github.com/identicons/contributor2.png" width="100px;" alt="Contributor 2"/>
-        <br />
-        <sub><b>Contribuidor 2</b></sub>
-      </a>
-      <br />
-      <sub>Backend & API</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/contributor3">
-        <img src="https://github.com/identicons/contributor3.png" width="100px;" alt="Contributor 3"/>
-        <br />
-        <sub><b>Contribuidor 3</b></sub>
-      </a>
-      <br />
-      <sub>IA & LangChain</sub>
+      <sub>Frontend & IA Developer</sub>
     </td>
     <td align="center">
       <a href="https://github.com/abbyenredes">
-        <img src="https://github.com/identicons/contributor4.png" width="100px;" alt="Contributor 4"/>
+        <img src="https://github.com/abbyenredes.png" width="100px;" alt="abbyenredes"/>
         <br />
-        <sub><b>Abigail Masapanta</b></sub>
+        <sub><b>abbyenredes</b></sub>
       </a>
       <br />
-      <sub>Base de Datos</sub>
+      <sub>IA Developer & Base de Datos</sub>
     </td>
     <td align="center">
-      <a href="https://github.com/contributor5">
-        <img src="https://github.com/identicons/contributor5.png" width="100px;" alt="Contributor 5"/>
+      <a href="https://github.com/Jorgeluuu">
+        <img src="https://github.com/Jorgeluuu.png" width="100px;" alt="Jorgeluuu"/>
         <br />
-        <sub><b>Contribuidor 5</b></sub>
+        <sub><b>Jorgeluuu</b></sub>
       </a>
       <br />
-      <sub>Documentación & Testing</sub>
+      <sub>IA Developer & Backend</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/mikewig">
+        <img src="https://github.com/mikewig.png" width="100px;" alt="mikewig"/>
+        <br />
+        <sub><b>mikewig</b></sub>
+      </a>
+      <br />
+      <sub>IA Developer & Backend</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/merkandez">
+        <img src="https://github.com/merkandez.png" width="100px;" alt="merkandez"/>
+        <br />
+        <sub><b>merkandez</b></sub>
+      </a>
+      <br />
+      <sub>IA Developer & Backend</sub>
     </td>
   </tr>
 </table>
